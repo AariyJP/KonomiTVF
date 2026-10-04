@@ -1,8 +1,8 @@
 <template>
-    <div class="route-container">
+    <div class="route-container" :class="{'route-container--pseudo-fullscreen': playerStore.is_pseudo_fullscreen}">
         <main class="watch-container" :class="{
                 'watch-container--control-display': playerStore.is_control_display,
-                'watch-container--panel-display': Utils.isSmartphoneVertical() || Utils.isTabletVertical() ? true : playerStore.is_panel_display,
+                'watch-container--panel-display': (Utils.isSmartphoneVertical() || Utils.isTabletVertical()) && playerStore.is_pseudo_fullscreen === false ? true : playerStore.is_panel_display,
                 'watch-container--fullscreen': playerStore.is_fullscreen,
                 'watch-container--document-pip': playerStore.is_document_pip,
                 'watch-container--video': playback_mode === 'Video',
@@ -360,6 +360,50 @@ export default defineComponent({
     @include smartphone-horizontal {
         border-bottom: env(safe-area-inset-bottom) solid rgb(var(--v-theme-black));
     }
+
+    // 疑似フルスクリーン時 (縦画面のみ)
+    // iPhone Safari は画面の向きを横に固定できないため、視聴画面全体を時計回りに 90° 回転させて横画面として表示する
+    // 回転前の幅に画面の高さ・高さに画面の幅を指定し、左上を軸に回転させてから画面の幅分右にずらすことで画面にぴったり収める
+    &.route-container--pseudo-fullscreen {
+        @media (orientation: portrait) {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vh !important;
+            width: 100dvh !important;
+            height: 100vw !important;
+            border-bottom: none;
+            transform-origin: top left;
+            transform: translateX(100vw) rotate(90deg);
+            // スマホ縦画面向けの 16:9 固定のプレイヤーサイズを解除し、回転後の画面いっぱいに広げる
+            :deep(.watch-player) {
+                aspect-ratio: auto;
+                height: 100%;
+            }
+            // 画面自体は縦画面のままなのでスマホ縦画面向けのスタイルが適用されるが、パネルはスマホ横画面と同じく右側に表示する
+            // パネルの幅分はみ出させておき、パネル表示時は画面幅に収める
+            .watch-container {
+                flex-direction: row;
+                width: calc(100% + 310px);
+                &.watch-container--panel-display {
+                    width: 100%;
+                }
+            }
+            :deep(.watch-panel) {
+                display: flex !important;
+                width: 310px;
+                height: 100%;
+                flex-grow: 0;
+            }
+            // スマホ縦画面では非表示にしているパネルの開閉ボタンを表示する
+            :deep(.watch-player__button) {
+                height: 155px;
+                .switch-button-panel {
+                    display: flex;
+                }
+            }
+        }
+    }
 }
 
 .watch-container {
@@ -451,6 +495,17 @@ export default defineComponent({
                 @include smartphone-horizontal {
                     padding-left: 16px;
                 }
+            }
+        }
+        // スマホ縦画面では、パネルを非表示にしてプレイヤーを画面の上下中央に配置する
+        // 画面の向きを横に固定できない iPhone Safari の疑似フルスクリーンでも、縦画面のままフルスクリーンらしい表示にするため
+        @include smartphone-vertical {
+            .watch-panel {
+                display: none;
+            }
+            .watch-content {
+                flex-grow: 1;
+                align-items: center;
             }
         }
     }

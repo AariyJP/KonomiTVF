@@ -1874,9 +1874,14 @@ class PlayerController {
         // フルスクリーンにするコンテナ要素 (ページ全体)
         const fullscreen_container = document.body;
 
+        // Fullscreen API によるネイティブのフルスクリーン状態かどうか
+        const isNativeFullScreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+
         // フルスクリーンかどうか
+        // iPhone Safari など Fullscreen API に対応していないブラウザでは、PlayerStore の is_pseudo_fullscreen で管理する疑似フルスクリーンになる
+        // PlayerController が再初期化されても疑似フルスクリーン状態を引き継げるよう、PlayerStore の値を状態として参照する
         this.player.fullScreen.isFullScreen = (type?: DPlayerType.FullscreenType) => {
-            return !!(document.fullscreenElement || document.webkitFullscreenElement);
+            return isNativeFullScreen() || player_store.is_pseudo_fullscreen;
         };
 
         // フルスクリーンをリクエスト
@@ -1893,8 +1898,11 @@ class PlayerController {
             if (fullscreen_container.requestFullscreen) {
                 fullscreen_container.requestFullscreen();
             } else {
-                // フルスクリーンがサポートされていない場合はエラーを表示
-                this.player.notice('iPhone Safari は動画のフルスクリーン表示に対応していません。', undefined, undefined, '#FF6F6A');
+                // Fullscreen API がサポートされていない場合 (iPhone Safari など) は、
+                // ナビゲーションやパネルを隠して視聴画面全体にプレイヤーを広げる疑似フルスクリーンにする
+                // 画面の向きも固定できないため、縦画面のときは Watch.vue の CSS で視聴画面全体を 90° 回転させて横画面表示にする
+                player_store.is_fullscreen = true;
+                player_store.is_pseudo_fullscreen = true;
                 return;
             }
             // 画面の向きを横に固定 (Screen Orientation API がサポートされている場合)
@@ -1905,6 +1913,12 @@ class PlayerController {
 
         // フルスクリーンをキャンセル
         this.player.fullScreen.cancel = (type?: DPlayerType.FullscreenType) => {
+            // 疑似フルスクリーンの場合は PlayerStore の状態を戻すだけで終了する
+            if (player_store.is_pseudo_fullscreen === true) {
+                player_store.is_fullscreen = false;
+                player_store.is_pseudo_fullscreen = false;
+                return;
+            }
             // フルスクリーンを終了
             // Safari は webkit のベンダープレフィックスが必要
             document.exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
@@ -1919,9 +1933,9 @@ class PlayerController {
 
         // フルスクリーン状態が変化した時のイベントハンドラーを登録
         // 複数のイベントを重複登録しないよう、あえて onfullscreenchange を使う
+        // isFullScreen() は PlayerStore の値も参照するため、ここではネイティブのフルスクリーン状態だけを反映する
         const fullscreen_handler = () => {
-            assert(this.player !== null);
-            player_store.is_fullscreen = this.player.fullScreen.isFullScreen() === true;
+            player_store.is_fullscreen = isNativeFullScreen();
         };
         if (fullscreen_container.onfullscreenchange !== undefined) {
             fullscreen_container.onfullscreenchange = fullscreen_handler;
