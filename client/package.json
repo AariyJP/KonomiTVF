@@ -1,6 +1,6 @@
 {
     "name": "KonomiTV",
-    "version": "2026.10.3-AariyJP",
+    "version": "v2026.10.4",
     "private": true,
     "scripts": {
         "akebi": "run-script-os",

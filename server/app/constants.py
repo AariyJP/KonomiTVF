@@ -15,7 +15,7 @@ from pydantic import BaseModel, PositiveInt
 
 
 # バージョン
-VERSION = '2026.10.3-AariyJP'
+VERSION = 'v2026.10.4'
 
 # 日本標準時 (JST, UTC+9) の ZoneInfo
 ## KonomiTV は日本向けのアプリケーションのため、日時は JST で統一して扱う
