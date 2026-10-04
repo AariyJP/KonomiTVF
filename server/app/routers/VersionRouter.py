@@ -36,13 +36,14 @@ async def VersionInformationAPI():
 
     global latest_version, latest_version_updated_at
 
-    # GitHub API で KonomiTV の最新のタグ (=最新バージョン) を取得
+    # GitHub API で KonomiTVF (AariyJP による KonomiTV のフォーク) の最新のタグ (=最新バージョン) を取得
     ## GitHub API は無認証だと60回/1時間までしかリクエストできないので、リクエスト結果を10分ほどキャッシュする
     if latest_version is None or (time.time() - latest_version_updated_at) > 60 * 10:
         try:
             async with HTTPX_CLIENT() as client:
-                response = await client.get('https://api.github.com/repos/tsukumijima/KonomiTV/tags')
-            if response.status_code == 200:
+                response = await client.get('https://api.github.com/repos/AariyJP/KonomiTVF/tags')
+            # まだタグが1つもない場合は空のリストが返るため、タグが存在するときだけ最新バージョンを更新する
+            if response.status_code == 200 and len(response.json()) > 0:
                 latest_version = response.json()[0]['name'].replace('v', '')  # 先頭の v を取り除く
                 latest_version_updated_at = time.time()
         except (httpx.NetworkError, httpx.TimeoutException):
