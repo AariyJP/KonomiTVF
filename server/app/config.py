@@ -40,17 +40,19 @@ from app.utils.TSInformation import TerrestrialRegion
 
 class ClientSettings(BaseModel):
     last_synced_at: Annotated[float, PositiveFloat] = 0.0
-    # showed_panel_last_time: 同期無効
+    showed_panel_last_time: bool = True
     # selected_twitter_panel_account: 同期無効
-    # twitter_panel_post_targets: 同期無効
+    twitter_panel_post_targets: dict[str, dict[str, bool]] = {}
+    twitter_reply_thread_states: dict[str, dict[str, Any]] = {}
+    bluesky_reply_thread_states: dict[str, dict[str, Any]] = {}
     saved_twitter_hashtags: list[str] = []
     mylist: list[dict[str, Any]] = []
     watched_history: list[dict[str, Any]] = []
-    # lshaped_screen_crop_enabled: 同期無効
-    # lshaped_screen_crop_zoom_level: 同期無効
-    # lshaped_screen_crop_x_position: 同期無効
-    # lshaped_screen_crop_y_position: 同期無効
-    # lshaped_screen_crop_zoom_origin: 同期無効
+    lshaped_screen_crop_enabled: bool = False
+    lshaped_screen_crop_zoom_level: float = 100
+    lshaped_screen_crop_x_position: float = 0
+    lshaped_screen_crop_y_position: float = 0
+    lshaped_screen_crop_zoom_origin: Literal['TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'] = 'BottomRight'
     pinned_channel_ids: list[str] = []
     timetable_channel_width: Literal['Wide', 'Normal', 'Narrow'] = 'Normal'
     timetable_hour_height: Literal['Wide', 'Normal', 'Narrow'] = 'Normal'
@@ -86,32 +88,32 @@ class ClientSettings(BaseModel):
     video_panel_active_tab: Literal['RecordedProgram', 'Series', 'Comment', 'Twitter'] = 'RecordedProgram'
     video_watched_history_max_count: Annotated[int, PositiveInt] = 50
     discord_rich_presence: bool = False
-    # tv_streaming_quality: 同期無効
-    # tv_streaming_quality_cellular: 同期無効
-    # tv_data_saver_mode: 同期無効
-    # tv_data_saver_mode_cellular: 同期無効
-    # tv_low_latency_mode: 同期無効
-    # tv_low_latency_mode_cellular: 同期無効
-    # tv_24fps_mode: 同期無効
-    # tv_24fps_mode_cellular: 同期無効
-    # video_streaming_quality: 同期無効
-    # video_streaming_quality_cellular: 同期無効
-    # video_data_saver_mode: 同期無効
-    # video_data_saver_mode_cellular: 同期無効
-    # video_24fps_mode: 同期無効
-    # video_24fps_mode_cellular: 同期無効
+    tv_streaming_quality: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '1080p'
+    tv_streaming_quality_cellular: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '480p'
+    tv_data_saver_mode: bool = False
+    tv_data_saver_mode_cellular: bool = True
+    tv_low_latency_mode: bool = True
+    tv_low_latency_mode_cellular: bool = False
+    tv_24fps_mode: bool = False
+    tv_24fps_mode_cellular: bool = False
+    video_streaming_quality: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '1080p'
+    video_streaming_quality_cellular: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '480p'
+    video_data_saver_mode: bool = False
+    video_data_saver_mode_cellular: bool = True
+    video_24fps_mode: bool = False
+    video_24fps_mode_cellular: bool = False
     caption_font: str = 'Windows TV MaruGothic'
     always_border_caption_text: bool = True
     specify_caption_opacity: bool = False
     caption_opacity: Annotated[float, confloat(ge=0.0, le=1.0)] = 1.0
     tv_show_superimpose: bool = True
     video_show_superimpose: bool = False
-    # tv_show_data_broadcasting: 同期無効
-    # enable_internet_access_from_data_broadcasting: 同期無効
+    tv_show_data_broadcasting: bool = True
+    enable_internet_access_from_data_broadcasting: bool = False
     capture_save_mode: Literal['Browser', 'UploadServer', 'Both'] = 'UploadServer'
     capture_caption_mode: Literal['VideoOnly', 'CompositingCaption', 'Both'] = 'Both'
     capture_filename_pattern: str = 'Capture_%date%-%time%'
-    # capture_copy_to_clipboard: 同期無効
+    capture_copy_to_clipboard: bool = False
     # sync_settings: 同期無効
     prefer_posting_to_nicolive: bool = True
     comment_speed_rate: Annotated[float, PositiveFloat] = 1.0

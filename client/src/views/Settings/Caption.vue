@@ -9,7 +9,7 @@
             <span class="ml-3">字幕</span>
         </h2>
         <div class="settings__content">
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <label class="settings__item-heading">字幕のフォント</label>
                 <label class="settings__item-label">
                     プレイヤーで字幕表示をオンにしているときの、字幕のフォントを設定します。<br>
@@ -19,7 +19,7 @@
                     :items="caption_font" v-model="settingsStore.settings.caption_font">
                 </v-select>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="always_border_caption_text">字幕の文字を常に縁取りする</label>
                 <label class="settings__item-label" for="always_border_caption_text">
                     オンにすると、字幕の文字が縁取りされてより見やすくなります。とくに理由がなければ、オンにしておくのがおすすめです。<br>
@@ -29,7 +29,7 @@
                     v-model="settingsStore.settings.always_border_caption_text">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="specify_caption_opacity">字幕の不透明度を指定する</label>
                 <label class="settings__item-label" for="specify_caption_opacity">
                     オフのときは、字幕データから指定されている不透明度で描画します。<br>
@@ -39,7 +39,7 @@
                     v-model="settingsStore.settings.specify_caption_opacity">
                 </v-switch>
             </div>
-            <div class="settings__item" :class="{'settings__item--disabled': settingsStore.settings.specify_caption_opacity === false}">
+            <div class="settings__item settings__item--sync-enabled" :class="{'settings__item--disabled': settingsStore.settings.specify_caption_opacity === false}">
                 <label class="settings__item-heading">字幕の不透明度</label>
                 <label class="settings__item-label">
                     上の [字幕の不透明度を指定する] をオンに設定したときのみ有効です。不透明度を 0 に設定すれば、字幕の背景を非表示にできます。<br>
@@ -52,7 +52,7 @@
                 </div>
             </div>
             <v-divider class="mt-6"></v-divider>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="tv_show_superimpose">テレビをみるときに文字スーパーを表示する</label>
                 <label class="settings__item-label" for="tv_show_superimpose">
                     文字スーパーは、緊急地震速報の赤テロップや、NHK BS のニュース速報のテロップなどで利用されています。とくに理由がなければ、オンにしておくのがおすすめです。<br>
@@ -61,7 +61,7 @@
                     v-model="settingsStore.settings.tv_show_superimpose">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="video_show_superimpose">ビデオをみるときに文字スーパーを表示する</label>
                 <label class="settings__item-label" for="video_show_superimpose">
                     文字スーパーは、緊急地震速報の赤テロップや、NHK BS のニュース速報のテロップなどで利用されています。録画当時の文字スーパーによるニュース速報を確認したい方以外は、オフにしておくのがおすすめです。<br>

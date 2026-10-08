@@ -146,19 +146,19 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
     // この値は main.ts 内にある SettingsStore.syncClientSettingsToServer() 以外から更新してはならない
     last_synced_at: 0,
 
-    // 前回視聴画面を開いた際にパネルが表示されていたかどうか (同期無効)
+    // 前回視聴画面を開いた際にパネルが表示されていたかどうか
     showed_panel_last_time: true,
     // 視聴画面 Twitter タブで最後に選択していたアカウント (Twitter / Bluesky / 紐付け の tagged union、同期無効)
     // ID は Twitter / Bluesky / 紐付け それぞれの DB 連番 ID で、別環境間で意味が異なるため同期対象外
     selected_twitter_panel_account: null,
-    // 紐付けアカウントごとの送信先設定 (同期無効)
+    // 紐付けアカウントごとの送信先設定
     // 視聴中に頻繁に変える UI 状態なので、サーバー側の AccountLink レコードには保存しない
     twitter_panel_post_targets: {},
-    // Twitter アカウントごとのリプライツリー状態 (同期無効)
-    // 実況中の一時的な投稿状態なので、サーバー設定同期で別端末へ引き継がない
+    // Twitter アカウントごとのリプライツリー状態
+    // 端末を切り替えても同じリプライツリーで実況を続けられるよう、サーバー設定同期で別端末へ引き継ぐ
     twitter_reply_thread_states: {},
-    // Bluesky アカウントごとのリプライツリー状態 (同期無効)
-    // 実況中の一時的な投稿状態なので、サーバー設定同期で別端末へ引き継がない
+    // Bluesky アカウントごとのリプライツリー状態
+    // 端末を切り替えても同じリプライツリーで実況を続けられるよう、サーバー設定同期で別端末へ引き継ぐ
     bluesky_reply_thread_states: {},
     // 保存している Twitter のハッシュタグが入るリスト
     saved_twitter_hashtags: [],
@@ -245,34 +245,34 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
 
     // ***** 設定 → 画質 *****
 
-    // テレビのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: 1080p) (同期無効)
+    // テレビのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: 1080p)
     tv_streaming_quality: '1080p',
-    // テレビのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p) (同期無効)
+    // テレビのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p)
     tv_streaming_quality_cellular: '480p',
-    // テレビを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
+    // テレビを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ)
     tv_data_saver_mode: false,
-    // テレビを通信節約モードで視聴する (モバイル回線時)  (Default: オン) (同期無効)
+    // テレビを通信節約モードで視聴する (モバイル回線時)  (Default: オン)
     tv_data_saver_mode_cellular: true,
-    // テレビを低遅延で視聴する (Wi-Fi 回線時)  (Default: 低遅延で視聴する) (同期無効)
+    // テレビを低遅延で視聴する (Wi-Fi 回線時)  (Default: 低遅延で視聴する)
     tv_low_latency_mode: true,
-    // テレビを低遅延で視聴する (モバイル回線時)  (Default: 低遅延で視聴しない) (同期無効)
+    // テレビを低遅延で視聴する (モバイル回線時)  (Default: 低遅延で視聴しない)
     tv_low_latency_mode_cellular: false,
-    // テレビを 24fps モードで視聴する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
+    // テレビを 24fps モードで視聴する (Wi-Fi 回線時)  (Default: オフ)
     tv_24fps_mode: false,
-    // テレビを 24fps モードで視聴する (モバイル回線時)  (Default: オフ) (同期無効)
+    // テレビを 24fps モードで視聴する (モバイル回線時)  (Default: オフ)
     tv_24fps_mode_cellular: false,
 
-    // ビデオのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: 1080p) (同期無効)
+    // ビデオのデフォルトのストリーミング画質 (Wi-Fi 回線時) (Default: 1080p)
     video_streaming_quality: '1080p',
-    // ビデオのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p) (同期無効)
+    // ビデオのデフォルトのストリーミング画質 (モバイル回線時) (Default: 480p)
     video_streaming_quality_cellular: '480p',
-    // ビデオを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
+    // ビデオを通信節約モードで視聴する (Wi-Fi 回線時)  (Default: オフ)
     video_data_saver_mode: false,
-    // ビデオを通信節約モードで視聴する (モバイル回線時)  (Default: オン) (同期無効)
+    // ビデオを通信節約モードで視聴する (モバイル回線時)  (Default: オン)
     video_data_saver_mode_cellular: true,
-    // ビデオを 24fps モードで再生する (Wi-Fi 回線時)  (Default: オフ) (同期無効)
+    // ビデオを 24fps モードで再生する (Wi-Fi 回線時)  (Default: オフ)
     video_24fps_mode: false,
-    // ビデオを 24fps モードで再生する (モバイル回線時)  (Default: オフ) (同期無効)
+    // ビデオを 24fps モードで再生する (モバイル回線時)  (Default: オフ)
     video_24fps_mode_cellular: false,
 
     // ***** 設定 → 字幕 *****
@@ -292,10 +292,10 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
 
     // ***** 設定 → データ放送 *****
 
-    // テレビをみるときにデータ放送機能を利用する (Default: 表示する) (同期無効)
+    // テレビをみるときにデータ放送機能を利用する (Default: 表示する)
     tv_show_data_broadcasting: true,
 
-    // データ放送からのインターネットアクセスを有効にする (Default: 無効) (同期無効)
+    // データ放送からのインターネットアクセスを有効にする (Default: 無効)
     enable_internet_access_from_data_broadcasting: false,
 
     // ***** 設定 → キャプチャ *****
@@ -306,7 +306,7 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
     capture_caption_mode: 'Both',
     // キャプチャの保存ファイル名 (Default: Capture_%date%-%time%)
     capture_filename_pattern: 'Capture_%date%-%time%',
-    // キャプチャをクリップボードにコピーする (Default: 無効) (同期無効)
+    // キャプチャをクリップボードにコピーする (Default: 無効)
     capture_copy_to_clipboard: false,
 
     // ***** 設定 → アカウント *****
@@ -370,19 +370,19 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
 // 同期されない設定も把握性向上のため、コメントとして残す
 export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'last_synced_at',
-    // showed_panel_last_time: 同期無効
+    'showed_panel_last_time',
     // selected_twitter_panel_account: 同期無効
-    // twitter_panel_post_targets: 同期無効
-    // twitter_reply_thread_states: 同期無効
-    // bluesky_reply_thread_states: 同期無効
+    'twitter_panel_post_targets',
+    'twitter_reply_thread_states',
+    'bluesky_reply_thread_states',
     'saved_twitter_hashtags',
     'mylist',
     'watched_history',
-    // lshaped_screen_crop_enabled: 同期無効
-    // lshaped_screen_crop_zoom_level: 同期無効
-    // lshaped_screen_crop_x_position: 同期無効
-    // lshaped_screen_crop_y_position: 同期無効
-    // lshaped_screen_crop_zoom_origin: 同期無効
+    'lshaped_screen_crop_enabled',
+    'lshaped_screen_crop_zoom_level',
+    'lshaped_screen_crop_x_position',
+    'lshaped_screen_crop_y_position',
+    'lshaped_screen_crop_zoom_origin',
     'pinned_channel_ids',
     'timetable_channel_width',
     'timetable_hour_height',
@@ -401,32 +401,32 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'video_panel_active_tab',
     'video_watched_history_max_count',
     'discord_rich_presence',
-    // tv_streaming_quality: 同期無効
-    // tv_streaming_quality_cellular: 同期無効
-    // tv_data_saver_mode: 同期無効
-    // tv_data_saver_mode_cellular: 同期無効
-    // tv_low_latency_mode: 同期無効
-    // tv_low_latency_mode_cellular: 同期無効
-    // tv_24fps_mode: 同期無効
-    // tv_24fps_mode_cellular: 同期無効
-    // video_streaming_quality: 同期無効
-    // video_streaming_quality_cellular: 同期無効
-    // video_data_saver_mode: 同期無効
-    // video_data_saver_mode_cellular: 同期無効
-    // video_24fps_mode: 同期無効
-    // video_24fps_mode_cellular: 同期無効
+    'tv_streaming_quality',
+    'tv_streaming_quality_cellular',
+    'tv_data_saver_mode',
+    'tv_data_saver_mode_cellular',
+    'tv_low_latency_mode',
+    'tv_low_latency_mode_cellular',
+    'tv_24fps_mode',
+    'tv_24fps_mode_cellular',
+    'video_streaming_quality',
+    'video_streaming_quality_cellular',
+    'video_data_saver_mode',
+    'video_data_saver_mode_cellular',
+    'video_24fps_mode',
+    'video_24fps_mode_cellular',
     'caption_font',
     'always_border_caption_text',
     'specify_caption_opacity',
     'caption_opacity',
     'tv_show_superimpose',
     'video_show_superimpose',
-    // tv_show_data_broadcasting: 同期無効
-    // enable_internet_access_from_data_broadcasting: 同期無効
+    'tv_show_data_broadcasting',
+    'enable_internet_access_from_data_broadcasting',
     'capture_save_mode',
     'capture_caption_mode',
     'capture_filename_pattern',
-    // capture_copy_to_clipboard: 同期無効
+    'capture_copy_to_clipboard',
     // sync_settings: 同期無効
     'prefer_posting_to_nicolive',
     'comment_speed_rate',

@@ -9,7 +9,7 @@
             <span class="ml-2">キャプチャ</span>
         </h2>
         <div class="settings__content">
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">キャプチャの保存先</div>
                 <div class="settings__item-label">
                     <ul class="settings__item-option-list">
@@ -29,7 +29,7 @@
                     :items="capture_save_mode" v-model="settingsStore.settings.capture_save_mode">
                 </v-select>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">字幕表示時のキャプチャの保存モード</div>
                 <div class="settings__item-label">
                     字幕表示中にキャプチャを撮るとき、映像に字幕を合成するかを設定します。<br>
@@ -40,7 +40,7 @@
                     :items="capture_caption_mode" v-model="settingsStore.settings.capture_caption_mode">
                 </v-select>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">キャプチャの保存ファイル名パターン</div>
                 <div class="settings__item-label">
                     保存時のファイル名（拡張子なし）を設定します。デフォルトは Capture_%date%-%time% です。<br>
@@ -136,7 +136,7 @@
                     v-model="settingsStore.settings.capture_filename_pattern">
                 </v-text-field>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="capture_copy_to_clipboard">キャプチャをクリップボードにコピーする</label>
                 <label class="settings__item-label" for="capture_copy_to_clipboard">
                     オンにすると、撮ったキャプチャをクリップボードにもコピーできます。<br>

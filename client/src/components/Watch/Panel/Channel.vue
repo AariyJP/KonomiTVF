@@ -15,7 +15,7 @@
         </div>
         <div class="channels-list-container">
             <Swiper class="channels-list" :space-between="32" :auto-height="true" :touch-start-prevent-default="false"
-                :observer="true" :observe-parents="true"
+                :observer="true" :observe-parents="true" :allow-touch-move="playerStore.is_pseudo_fullscreen === false"
                 @swiper="swiper_instance = $event"
                 @slide-change="active_tab_index = $event.activeIndex">
                 <SwiperSlide v-for="[channels_type, channels] in Array.from(channelsStore.channels_list_with_pinned_for_watch)" :key="channels_type">
@@ -108,6 +108,14 @@ export default defineComponent({
             this.swiper_instance?.updateAutoHeight();
             // 現在なアクティブなタブを Swiper 側に随時反映する
             this.swiper_instance?.slideTo(this.active_tab_index);
+        },
+        'playerStore.is_pseudo_fullscreen'() {
+            // 疑似フルスクリーン中は画面を CSS で回転させており、Swiper のスワイプ判定が縦スクロールと逆転するため無効化する
+            // 回転しない横向き時も無効になるが、タブボタンで切り替えられるため実害はなく、条件を単純にするためあえて区別しない
+            // allowTouchMove は Swiper Vue のリアクティブな更新対象外なので、インスタンスに直接反映する
+            if (this.swiper_instance !== null) {
+                this.swiper_instance.allowTouchMove = this.playerStore.is_pseudo_fullscreen === false;
+            }
         },
         async 'playerStore.tv_panel_active_tab'() {
             // content-visibility: auto の指定の関係でうまく計算されないことがある Swiper の autoHeight を強制的に再計算する

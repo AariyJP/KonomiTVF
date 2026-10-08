@@ -46,7 +46,7 @@
                     <Icon icon="fluent:plug-disconnected-20-filled" class="mr-2" height="26" />連携解除
                 </v-btn>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="prefer_posting_to_nicolive">可能であればニコニコ実況にコメントする</label>
                 <label class="settings__item-label" for="prefer_posting_to_nicolive">
                     <ul class="ml-4 mb-2 font-weight-bold">
@@ -64,7 +64,7 @@
                     v-model="settingsStore.settings.prefer_posting_to_nicolive">
                 </v-switch>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">コメントのミュート設定</div>
                 <div class="settings__item-label">
                     表示したくないコメントを、映像上やコメントリストに表示しないようにミュートできます。<br>
@@ -121,7 +121,7 @@
                 </v-slider>
             </div>
             <v-divider class="mt-6"></v-divider>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">コメントの速さ</div>
                 <div class="settings__item-label">
                     プレイヤーに流れるコメントの速さを設定します。<br>
@@ -131,7 +131,7 @@
                     :step="0.1" :min="0.5" :max="2" v-model="settingsStore.settings.comment_speed_rate">
                 </v-slider>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">コメントの文字サイズ</div>
                 <div class="settings__item-label">
                     プレイヤーに流れるコメントの文字サイズの基準値を設定します。<br>
@@ -141,7 +141,7 @@
                     :step="1" :min="20" :max="60" v-model="settingsStore.settings.comment_font_size">
                 </v-slider>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="close_comment_form_after_sending">コメント送信後にコメント入力フォームを閉じる</label>
                 <label class="settings__item-label" for="close_comment_form_after_sending">
                     オンにすると、コメント送信後に、コメント入力フォームが自動で閉じるようになります。<br>

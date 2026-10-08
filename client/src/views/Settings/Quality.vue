@@ -22,7 +22,7 @@
                 <Icon icon="fluent:tv-20-filled" width="22px" />
                 <span class="ml-2">テレビのライブストリーミング</span>
             </div>
-            <div class="settings__item settings__item--sync-disabled">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">テレビのデフォルトのストリーミング画質</div>
                 <div class="settings__item-label">
                     ライブ視聴時に最初に適用される、デフォルトの画質を設定します。<br>
@@ -49,7 +49,7 @@
                     :items="tv_streaming_quality_cellular" v-model="settingsStore.settings.tv_streaming_quality_cellular">
                 </v-select>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled"
+            <div class="settings__item settings__item--switch settings__item--sync-enabled"
                 :class="{'settings__item--disabled': PlayerUtils.isHEVCVideoSupported() === false}">
                 <label class="settings__item-heading" :for="`tv_data_saver_mode${network_circuit === 'モバイル回線時' ? '_cellular' : ''}`">
                     テレビを通信節約モードで視聴する
@@ -72,7 +72,7 @@
                     v-model="settingsStore.settings.tv_data_saver_mode_cellular" :disabled="PlayerUtils.isHEVCVideoSupported() === false">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" :for="`tv_low_latency_mode${network_circuit === 'モバイル回線時' ? '_cellular' : ''}`">
                     テレビを低遅延で視聴する
                 </label>
@@ -89,7 +89,7 @@
                     v-model="settingsStore.settings.tv_low_latency_mode_cellular">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" :for="`tv_24fps_mode${network_circuit === 'モバイル回線時' ? '_cellular' : ''}`">
                     テレビを 24fps モードで視聴する
                 </label>
@@ -112,7 +112,7 @@
                 <Icon icon="fluent:movies-and-tv-20-filled" width="22px" />
                 <span class="ml-2">ビデオのオンデマンドストリーミング</span>
             </div>
-            <div class="settings__item settings__item--sync-disabled">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">ビデオのデフォルトのストリーミング画質</div>
                 <div class="settings__item-label">
                     録画再生時に最初に適用される、デフォルトの画質を設定します。<br>
@@ -142,7 +142,7 @@
                     :items="video_streaming_quality_cellular" v-model="settingsStore.settings.video_streaming_quality_cellular">
                 </v-select>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled"
+            <div class="settings__item settings__item--switch settings__item--sync-enabled"
                 :class="{'settings__item--disabled': PlayerUtils.isHEVCVideoSupported() === false}">
                 <label class="settings__item-heading" :for="`video_data_saver_mode${network_circuit === 'モバイル回線時' ? '_cellular' : ''}`">
                     ビデオを通信節約モードで再生する
@@ -165,7 +165,7 @@
                     v-model="settingsStore.settings.video_data_saver_mode_cellular" :disabled="PlayerUtils.isHEVCVideoSupported() === false">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" :for="`video_24fps_mode${network_circuit === 'モバイル回線時' ? '_cellular' : ''}`">
                     ビデオを 24fps モードで再生する
                 </label>

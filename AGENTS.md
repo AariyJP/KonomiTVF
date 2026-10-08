@@ -1,5 +1,36 @@
 # AGENTS.md
 
+## プロジェクト概要
+
+- KonomiTV は、テレビのライブ視聴と録画番組の再生をブラウザで行うための Web アプリケーション (PWA)
+- EDCB または Mirakurun / mirakc をバックエンドとして放送波を受信し、サーバー側でエンコードしてブラウザに配信する
+- 主な機能:
+  - テレビのライブ視聴・録画番組の再生 (画質・通信節約モード・低遅延・24fps モードなどを回線種別ごとに設定可能)
+  - ニコニコ実況 / NX-Jikkyo のコメント表示・投稿、Twitter / Bluesky での実況投稿 (キャプチャ添付・リプライツリー実況)
+  - データ放送、字幕・文字スーパー、L字画面のクロップ、キャプチャ、番組表、EDCB と連携した録画予約
+  - KonomiTV アカウントによるクライアント設定のデバイス間同期。`sync_settings` (同期のオン・オフ自体) と `selected_twitter_panel_account` (DB 連番 ID に依存) 以外の設定はすべてアカウントに同期され、設定画面では同期される項目に「デバイス間同期有効」ラベルを表示する
+  - Discord Rich Presence: KonomiTV サーバーと同じ PC で起動している Discord に視聴中の番組を表示する (`server/app/utils/DiscordRichPresenceTask.py` / `DiscordRPCClient.py`)。クライアント設定 `discord_rich_presence` で切り替え、サーバー側で参照するため設定同期がオンのときだけ有効
+  - iPhone Safari など Fullscreen API がないブラウザ向けの疑似フルスクリーン (`PlayerStore.is_pseudo_fullscreen`)。縦向きでは `Watch.vue` の CSS で視聴画面全体を 90° 回転させて横画面表示にし、右側のパネルも開ける。回転中は Swiper のスワイプ判定が逆転するため、パネルのチャンネルタブではスワイプによるタブ切り替えを無効化している
+- サーバーとクライアントの両方を各ユーザーの PC で動かす前提で、Windows サービス・Linux の pm2 サービス・Docker で動作する
+- 動画プレイヤーには DPlayer のフォーク `github:AariyJP/DPlayerF#main` (tsukumijima/DPlayer v1.33.2 ベース) を使う。音量バーの常時表示・拡幅・1% 単位のホイール / 矢印キー操作と、big / small サイズのコメントで基準フォントサイズが変わってしまう問題の修正を含む
+
+### リポジトリとリリース
+
+- リポジトリは [AariyJP/KonomiTVF](https://github.com/AariyJP/KonomiTVF) (Git remote `fork`)。[tsukumijima/KonomiTV](https://github.com/tsukumijima/KonomiTV) (Git remote `origin`) の v0.14.1 から派生している
+  - `main`: リリースブランチ
+  - `develop`: 開発ブランチ。`origin` の master は `--no-ff` のマージコミットでここに取り込む
+- バージョンは日付ベースの `YYYY.M.D` (例: `2026.10.5`)
+  - `client/package.json` と `server/app/constants.py` には `v` なしで記載し、Git タグは `v` 付き (例: `v2026.10.5`) にする
+  - バージョン更新コミットのコミットメッセージはタグ名と同じにする
+- アップデート確認 (`server/app/routers/VersionRouter.py`) は AariyJP/KonomiTVF のタグを参照する。ナビゲーションやマイページのリンク先も AariyJP/KonomiTVF
+- `client/dist/` は Git 管理外。コミットせず、各環境の `client/` でビルドする
+
+### 運用環境
+
+- Windows で動く KonomiTV Service は、このリポジトリから直接起動している。チェックアウト中のブランチとビルド済みの `client/dist/` が、サービス再起動時にそのまま本番になる
+- 本番用の `config.yaml`、`server/data/`、`server/thirdparty/`、`server/logs/` もこのリポジトリ内にある (いずれも Git 管理外)。これらを消さないよう、`git clean -x` / `git clean -X` は実行しない
+- 下記「開発環境構成」は Linux / pm2 での開発を前提にした記述で、上記の Windows の運用環境とは異なる
+
 ## プロジェクト固有の注意事項
 
 - yarn や uv はそれぞれ `client/` と `server/` のディレクトリに移動した状態で実行してください。ルートディレクトリにはパッケージ管理系のファイルは一切配置していません。
