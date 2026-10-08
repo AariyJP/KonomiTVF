@@ -1374,6 +1374,42 @@ class PlayerController {
             };
         }
 
+        // iOS Safari などでは、ページがバックグラウンドに回るとブラウザ側で動画が一時停止されてしまう
+        // ユーザー操作 (DPlayer の UI・キーボードショートカット・メディア通知) による一時停止は必ず DPlayer.pause() を経由するため、
+        // DPlayer.pause() を経由しないネイティブの一時停止がバックグラウンド移行時に発生した場合は、ブラウザによるものとみなして再生を再開する
+        let last_user_pause_requested_at = 0;
+        const original_pause = this.player.pause.bind(this.player);
+        this.player.pause = (fromNative = false) => {
+            // ネイティブの pause イベントから呼ばれた場合 (fromNative = true) はユーザー操作ではないので記録しない
+            if (fromNative === false) {
+                last_user_pause_requested_at = Date.now();
+            }
+            original_pause(fromNative);
+        };
+        this.player.on('pause', () => {
+            // 直前にユーザー操作による一時停止が要求されていた場合は何もしない
+            if (Date.now() - last_user_pause_requested_at < 1000) return;
+            const paused_player = this.player;
+            const resume_playback = () => {
+                if (this.destroyed === true || paused_player === null || this.player !== paused_player) return;
+                if (paused_player.video.paused === false || document.visibilityState !== 'hidden') return;
+                console.log('[PlayerController] Video paused by browser in background. Resuming playback.');
+                paused_player.video.play().catch((error) => {
+                    console.warn('\u001b[33m[PlayerController] Failed to resume playback in background:', error);
+                });
+            };
+            // すでにバックグラウンドに回っている場合はすぐに再生を再開する
+            if (document.visibilityState === 'hidden') {
+                resume_playback();
+                return;
+            }
+            // 一時停止がページの非表示より先に発生する場合に備え、直後にページが非表示になったときも再生を再開する
+            const paused_at = Date.now();
+            document.addEventListener('visibilitychange', () => {
+                if (Date.now() - paused_at < 1000) resume_playback();
+            }, {once: true});
+        });
+
         // 再生が一時的に止まってバッファリングしているとき/再び再生されはじめたときのイベント
         // バッファリングの Progress Circular の表示を制御する
         this.player.on('waiting', () => {
