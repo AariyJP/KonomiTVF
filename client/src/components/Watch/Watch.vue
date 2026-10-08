@@ -402,6 +402,10 @@ export default defineComponent({
                     display: flex;
                 }
             }
+            // Swiper の touch-action: pan-y は回転前の画面座標で解釈され、見た目上の縦スクロールを妨げるため解除する
+            :deep(.channels-list) {
+                touch-action: auto;
+            }
         }
     }
 }
