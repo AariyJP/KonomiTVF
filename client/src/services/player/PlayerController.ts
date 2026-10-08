@@ -1354,11 +1354,62 @@ class PlayerController {
         this.player.on('play', on_play_or_pause);
         this.player.on('pause', on_play_or_pause);
 
+        // ライブ視聴: 同期 (再生再開時の自動同期・同期ボタン・キーボードショートカット) の前に再生位置が正常かを確認する
+        // iOS Safari の ManagedMediaSource では currentTime が NaN のまま再生が続くことがあり、この状態でシークすると
+        // ブラウザ側でバッファがすべて破棄されて再生が止まってしまうため、シークせずにプレイヤーを再起動して最新の映像に同期する
+        // ライブ視聴では同期・再生再開のどちらも最新の映像へ移動する操作なので、再起動しても結果は変わらない
+        if (this.playback_mode === 'Live') {
+            const original_sync = this.player.sync.bind(this.player);
+            this.player.sync = (quiet?: boolean) => {
+                if (this.player !== null && this.player.type === 'mpegts' && player_store.is_loading === false &&
+                    Number.isFinite(this.player.video.currentTime) === false) {
+                    console.warn('\u001b[31m[PlayerController] currentTime is not finite. Restarting player instead of seeking.');
+                    player_store.event_emitter.emit('PlayerRestartRequired', {
+                        message: '最新の映像に同期しています…',
+                        is_error_message: false,
+                    });
+                    return;
+                }
+                original_sync(quiet);
+            };
+        }
+
         // 再生が一時的に止まってバッファリングしているとき/再び再生されはじめたときのイベント
         // バッファリングの Progress Circular の表示を制御する
         this.player.on('waiting', () => {
             // Progress Circular を表示する
             player_store.is_video_buffering = true;
+
+            // ライブ視聴 (mpegts.js) のみ、再生位置がバッファから外れたまま復帰できない状態を検出してプレイヤーを再起動する
+            // iOS Safari の ManagedMediaSource では currentTime が NaN のまま再生が続くことがあり、この状態でシークすると
+            // シーク先を含むバッファがブラウザ側で破棄され、seeking が完了せずに永久にバッファリング中のままになってしまう
+            // 通信が遅いだけの場合は再生位置がバッファの末尾付近にあるため、再起動の対象にはならない
+            if (this.playback_mode !== 'Live' || this.player?.type !== 'mpegts') return;
+            const waiting_player = this.player;
+            window.setTimeout(() => {
+                // 3 秒経過した時点でプレイヤーが作り直されている・ロード中・停止中・バッファリングが解消済みの場合は何もしない
+                if (this.destroyed === true || this.player !== waiting_player || player_store.is_loading === true ||
+                    player_store.is_video_buffering === false || this.player.video.paused === true) return;
+                const video = this.player.video;
+                if (video.buffered.length === 0) return;
+
+                // 再生位置がいずれかのバッファ範囲 (末尾から 0.5 秒の余裕を含む) に収まっているかを確認する
+                let is_in_buffered_range = false;
+                for (let i = 0; i < video.buffered.length; i++) {
+                    if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i) + 0.5) {
+                        is_in_buffered_range = true;
+                        break;
+                    }
+                }
+
+                // 再生位置が不正な値か、バッファ範囲外にある場合は自然には復帰できないため、PlayerController の再起動を要求する
+                if (Number.isFinite(video.currentTime) === false || is_in_buffered_range === false) {
+                    console.warn('\u001b[31m[PlayerController] Playback position is out of buffered range. Restarting player.', video.currentTime);
+                    player_store.event_emitter.emit('PlayerRestartRequired', {
+                        message: '再生位置がずれたため、プレイヤーを再起動しています…',
+                    });
+                }
+            }, 3 * 1000);
         });
         this.player.on('playing', () => {
             // ロード中 (映像が表示されていない) でなければ Progress Circular を非表示にする
