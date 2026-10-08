@@ -11,7 +11,7 @@
             <span class="ml-2">データ放送</span>
         </h2>
         <div class="settings__content">
-            <div class="settings__item settings__item--switch settings__item--sync-disabled">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="tv_show_data_broadcasting">テレビをみるときにデータ放送機能を利用する</label>
                 <label class="settings__item-label" for="tv_show_data_broadcasting">
                     データ放送画面自体のオン/オフは、視聴画面右側のパネルからリモコンを表示した上で、リモコンの d ボタンから切り替えられます。<br>
@@ -22,7 +22,7 @@
                     v-model="settingsStore.settings.tv_show_data_broadcasting">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="enable_internet_access_from_data_broadcasting">データ放送からのインターネットアクセスを有効にする</label>
                 <label class="settings__item-label" for="enable_internet_access_from_data_broadcasting">
                     オンにすると、データ放送機能を利用する際に、データ放送からインターネットにアクセスできるようになります。<br>

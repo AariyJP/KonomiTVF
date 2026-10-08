@@ -231,7 +231,7 @@
                     </v-card>
                 </v-dialog>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="fold_panel_after_sending_tweet">ツイート送信後にパネルを自動で折りたたむ</label>
                 <label class="settings__item-label" for="fold_panel_after_sending_tweet">
                     ツイートするとき以外はできるだけ映像を大きくして観たい方におすすめです。<br>
@@ -240,7 +240,7 @@
                     v-model="settingsStore.settings.fold_panel_after_sending_tweet">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="reset_hashtag_when_program_switches">番組が切り替わったときにハッシュタグフォームをリセットする</label>
                 <label class="settings__item-label" for="reset_hashtag_when_program_switches">
                     チャンネルを切り替えたときや、視聴中の番組が終了し次の番組の放送が開始されたときに、ハッシュタグフォームをリセットするかを設定します。<br>
@@ -250,7 +250,7 @@
                     v-model="settingsStore.settings.reset_hashtag_when_program_switches">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch">
+            <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="auto_add_watching_channel_hashtag">視聴中のチャンネルに対応する局タグを自動で追加する</label>
                 <label class="settings__item-label" for="auto_add_watching_channel_hashtag">
                     オンにすると、視聴中のチャンネルに対応する局タグ (#nhk, #tokyomx など) がハッシュタグフォームに自動で追加されます。<br>
@@ -260,7 +260,7 @@
                     v-model="settingsStore.settings.auto_add_watching_channel_hashtag">
                 </v-switch>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">リプライツリー実況の設定 (Twitter)</div>
                 <div class="settings__item-label">
                     <strong>実況ツイートを「直前の自分の実況ツイートへのリプライ」としてつなげていくことで、X Premium 未加入アカウントでのツイート数上限を緩和し、スパム判定されづらくするための機能です。</strong>
@@ -285,7 +285,7 @@
                     :items="twitter_reply_thread_mode" v-model="settingsStore.settings.twitter_reply_thread_mode">
                 </v-select>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">リプライツリー実況の設定 (Bluesky)</div>
                 <div class="settings__item-label">
                     Bluesky は1日あたりのツイート数上限が緩いため、Twitter のように制限回避の目的でリプライツリー実況を行う必要はありません。とはいえハッシュタグごとに実況ツイートをまとめられる点は便利ですので、後で番組ごとに実況ツイートを遡りたい方は設定しておくと便利です。
@@ -299,7 +299,7 @@
                     :items="bluesky_reply_thread_mode" v-model="settingsStore.settings.bluesky_reply_thread_mode">
                 </v-select>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">デフォルトで表示される Twitter タブ内のタブ</div>
                 <div class="settings__item-label">
                     視聴画面を開いたときに、パネルの Twitter タブの中で最初に表示されるタブを設定します。<br>
@@ -309,7 +309,7 @@
                     :items="twitter_active_tab" v-model="settingsStore.settings.twitter_active_tab">
                 </v-select>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">ツイートにつけるハッシュタグの位置</div>
                 <div class="settings__item-label">
                     ハッシュタグをツイート本文のどの位置に追加するかを設定します。<br>
@@ -319,7 +319,7 @@
                     :items="tweet_hashtag_position" v-model="settingsStore.settings.tweet_hashtag_position">
                 </v-select>
             </div>
-            <div class="settings__item">
+            <div class="settings__item settings__item--sync-enabled">
                 <div class="settings__item-heading">ツイートするキャプチャに番組タイトルの透かしを描画する</div>
                 <div class="settings__item-label">
                     ツイートに添付するキャプチャ画像に、視聴中の番組タイトルを透かしとして描画するかを設定します。<br>

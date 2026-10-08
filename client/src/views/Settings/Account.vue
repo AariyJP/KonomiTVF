@@ -92,8 +92,7 @@
                         同期をオンにすると、<strong>同期をオンにしているすべてのデバイスで共通の設定が使えます。</strong><br>
                     </label>
                     <label class="settings__item-label" for="sync_settings">
-                        <strong>ピン留めしたチャンネル・マイリスト・視聴履歴・ハッシュタグリストなども一緒に同期されます。</strong><br>
-                        なお、デバイス固有の設定（画質設定など）は、同期後も各デバイスで個別に反映されます。<br>
+                        <strong>ピン留めしたチャンネル・マイリスト・視聴履歴・ハッシュタグリスト・画質設定なども一緒に同期されます。</strong><br>
                     </label>
                     <v-switch class="settings__item-switch" color="primary" id="sync_settings" hide-details
                         v-model="sync_settings">

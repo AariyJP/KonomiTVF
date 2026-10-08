@@ -1,6 +1,15 @@
 
+import type { IBlueskyReplyThreadState, ITwitterReplyThreadState } from '@/utils/TweetUtils';
+
 import APIClient from '@/services/APIClient';
-import { getSyncableClientSettings, ITimeTableGenreColors, TimeTableSizeOption } from '@/stores/SettingsStore';
+import {
+    getSyncableClientSettings,
+    ITimeTableGenreColors,
+    ITwitterPanelPostTarget,
+    LiveStreamingQuality,
+    TimeTableSizeOption,
+    VideoStreamingQuality,
+} from '@/stores/SettingsStore';
 
 
 /**
@@ -17,9 +26,11 @@ export interface IMutedCommentKeywords {
  */
 export interface IClientSettings {
     last_synced_at: number;
-    // showed_panel_last_time: 同期無効
+    showed_panel_last_time: boolean;
     // selected_twitter_panel_account: 同期無効
-    // twitter_panel_post_targets: 同期無効
+    twitter_panel_post_targets: Record<string, ITwitterPanelPostTarget>;
+    twitter_reply_thread_states: Record<string, ITwitterReplyThreadState>;
+    bluesky_reply_thread_states: Record<string, IBlueskyReplyThreadState>;
     saved_twitter_hashtags: string[];
     mylist: {
         type: 'Series' | 'RecordedProgram';
@@ -32,11 +43,11 @@ export interface IClientSettings {
         created_at: number;
         updated_at: number;
     }[];
-    // lshaped_screen_crop_enabled: 同期無効
-    // lshaped_screen_crop_zoom_level: 同期無効
-    // lshaped_screen_crop_x_position: 同期無効
-    // lshaped_screen_crop_y_position: 同期無効
-    // lshaped_screen_crop_zoom_origin: 同期無効
+    lshaped_screen_crop_enabled: boolean;
+    lshaped_screen_crop_zoom_level: number;
+    lshaped_screen_crop_x_position: number;
+    lshaped_screen_crop_y_position: number;
+    lshaped_screen_crop_zoom_origin: 'TopLeft' | 'TopRight' | 'BottomLeft' | 'BottomRight';
     pinned_channel_ids: string[];
     timetable_channel_width: TimeTableSizeOption;
     timetable_hour_height: TimeTableSizeOption;
@@ -55,32 +66,32 @@ export interface IClientSettings {
     video_panel_active_tab: 'RecordedProgram' | 'Series' | 'Comment' | 'Twitter';
     video_watched_history_max_count: number;
     discord_rich_presence: boolean;
-    // tv_streaming_quality: 同期無効
-    // tv_streaming_quality_cellular: 同期無効
-    // tv_data_saver_mode: 同期無効
-    // tv_data_saver_mode_cellular: 同期無効
-    // tv_low_latency_mode: 同期無効
-    // tv_low_latency_mode_cellular: 同期無効
-    // tv_24fps_mode: 同期無効
-    // tv_24fps_mode_cellular: 同期無効
-    // video_streaming_quality: 同期無効
-    // video_streaming_quality_cellular: 同期無効
-    // video_data_saver_mode: 同期無効
-    // video_data_saver_mode_cellular: 同期無効
-    // video_24fps_mode: 同期無効
-    // video_24fps_mode_cellular: 同期無効
+    tv_streaming_quality: LiveStreamingQuality;
+    tv_streaming_quality_cellular: LiveStreamingQuality;
+    tv_data_saver_mode: boolean;
+    tv_data_saver_mode_cellular: boolean;
+    tv_low_latency_mode: boolean;
+    tv_low_latency_mode_cellular: boolean;
+    tv_24fps_mode: boolean;
+    tv_24fps_mode_cellular: boolean;
+    video_streaming_quality: VideoStreamingQuality;
+    video_streaming_quality_cellular: VideoStreamingQuality;
+    video_data_saver_mode: boolean;
+    video_data_saver_mode_cellular: boolean;
+    video_24fps_mode: boolean;
+    video_24fps_mode_cellular: boolean;
     caption_font: string;
     always_border_caption_text: boolean;
     specify_caption_opacity: boolean;
     caption_opacity: number;
     tv_show_superimpose: boolean;
     video_show_superimpose: boolean;
-    // tv_show_data_broadcasting: 同期無効
-    // enable_internet_access_from_data_broadcasting: 同期無効
+    tv_show_data_broadcasting: boolean;
+    enable_internet_access_from_data_broadcasting: boolean;
     capture_save_mode: 'Browser' | 'UploadServer' | 'Both';
     capture_caption_mode: 'VideoOnly' | 'CompositingCaption' | 'Both';
     capture_filename_pattern: string;
-    // capture_copy_to_clipboard: 同期無効
+    capture_copy_to_clipboard: boolean;
     // sync_settings: 同期無効
     prefer_posting_to_nicolive: boolean;
     comment_speed_rate: number;

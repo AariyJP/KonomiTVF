@@ -292,6 +292,27 @@ export default defineComponent({
                     }
                 }
 
+                // KonomiTV アカウントの設定同期でデバイス間に同期される設定項目に表示するラベル
+                &--sync-enabled {
+                    .settings__item-heading {
+                        padding-right: 8px;
+                        &:after {
+                            content: 'デバイス間同期有効';
+                            display: flex;
+                            align-items: center;
+                            flex-shrink: 0;
+                            position: relative;
+                            right: -8px;
+                            padding: 2px 4px;
+                            margin-left: auto;
+                            border-radius: 4px;
+                            background: rgb(var(--v-theme-success-darken-2));
+                            color: rgb(var(--v-theme-text));
+                            font-size: 11px;
+                        }
+                    }
+                }
+
                 &--switch {
                     margin-right: 62px;
                     @include smartphone-vertical {
