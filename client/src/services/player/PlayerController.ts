@@ -1134,6 +1134,18 @@ class PlayerController {
             this.setControlDisplayTimer(event.event, event.is_player_region_event, event.timeout_seconds);
         });
 
+        // ライブ視聴時のみ: UI コンポーネントからコメントの送信を要求されたときのイベントハンドラーを登録する
+        // コメントパネルのコメント送信欄から利用される
+        // プレイヤー内のコメント入力欄に送信するコメントをセットしてから送信することで、色・位置・サイズの設定や送信処理をそのまま流用する
+        if (this.playback_mode === 'Live') {
+            player_store.event_emitter.off('CommentSendRequest');  // CommentSendRequest イベントの全てのイベントハンドラーを削除
+            player_store.event_emitter.on('CommentSendRequest', (event) => {
+                if (this.destroyed === true || this.player === null || this.player.comment === null) return;
+                this.player.template.commentInput.value = event.text;
+                this.player.comment.send();
+            });
+        }
+
         // 録画再生時のみ: UI コンポーネントから指定秒数へのシークを要求されたときのイベントハンドラーを登録する
         // コメントリストからコメントをクリックした際などに利用される
         if (this.playback_mode === 'Video') {

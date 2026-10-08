@@ -120,6 +120,14 @@
                 </div>
             </div>
         </section>
+        <section class="comment-form" v-if="playback_mode === 'Live'">
+            <input class="comment-form__input" type="search" enterkeyhint="send" placeholder="コメントを入力して Enter で送信"
+                spellcheck="false" maxlength="60" v-model="comment_form_text" @keydown="handleCommentFormKeydown">
+            <button v-ripple class="comment-form__button" aria-label="コメントを送信" :disabled="comment_form_text.trim() === ''"
+                @click="sendComment">
+                <Icon icon="fluent:send-16-filled" width="20px" />
+            </button>
+        </section>
         <div v-ripple class="comment-scroll-button elevation-5" @click="handleAutoScrollButtonClick"
              :class="{'comment-scroll-button--display': is_manual_scroll}">
             <Icon icon="fluent:arrow-down-12-filled" height="29px" />
@@ -177,6 +185,9 @@ export default defineComponent({
 
             // コメントのミュート設定のモーダルを表示するか
             comment_mute_settings_modal: false,
+
+            // ライブ視聴のみ: コメント送信欄に入力されているコメント
+            comment_form_text: '',
 
             // visibilitychange イベントのリスナー
             visibilitychange_listener: null as (() => void) | null,
@@ -430,6 +441,23 @@ export default defineComponent({
         this.comment_list = [];
     },
     methods: {
+
+        // ライブ視聴のみ: コメント送信欄で Enter キーが押されたらコメントを送信する
+        handleCommentFormKeydown(event: KeyboardEvent) {
+            // IME の変換確定の Enter キーでは送信しない
+            if (event.key !== 'Enter' || event.isComposing === true || event.keyCode === 229) return;
+            event.preventDefault();
+            this.sendComment();
+        },
+
+        // ライブ視聴のみ: コメント送信欄に入力されたコメントを送信する
+        // 送信処理自体はプレイヤー内のコメント入力欄のものを流用するため、PlayerController に送信を要求する
+        sendComment() {
+            // 空のコメントは送信しない
+            if (this.comment_form_text.trim() === '') return;
+            this.playerStore.event_emitter.emit('CommentSendRequest', {text: this.comment_form_text});
+            this.comment_form_text = '';
+        },
 
         // ドロップダウンメニューを表示する
         showCommentListDropdown(event: Event, comment: ICommentData) {
@@ -936,6 +964,61 @@ export default defineComponent({
             opacity: 1;
             visibility: visible;
         }
+    }
+
+    // ライブ視聴のみ: コメント送信欄
+    .comment-form {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        gap: 8px;
+        width: 100%;
+        padding: 10px 16px 12px;
+        @include tablet-vertical {
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        &__input {
+            flex-grow: 1;
+            min-width: 0;
+            height: 38px;
+            padding: 0 12px;
+            border-radius: 6px;
+            background: rgb(var(--v-theme-background-lighten-2));
+            color: rgb(var(--v-theme-text));
+            font-size: 14px;
+            outline: none;
+            transition: box-shadow 0.15s ease;
+            &:focus {
+                box-shadow: 0 0 0 2px rgb(var(--v-theme-primary));
+            }
+            &::placeholder {
+                color: rgb(var(--v-theme-text-darken-2));
+            }
+        }
+
+        &__button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            background: rgb(var(--v-theme-primary));
+            color: rgb(var(--v-theme-text));
+            transition: opacity 0.15s ease;
+            &:disabled {
+                opacity: 0.5;
+                cursor: default;
+            }
+        }
+    }
+
+    // ライブ視聴時はコメント送信欄があるので、その分自動スクロールボタンを上にずらす
+    &:not(.comment-container--video) .comment-scroll-button {
+        bottom: 82px;
     }
 }
 

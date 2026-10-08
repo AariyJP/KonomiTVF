@@ -50,6 +50,10 @@ export type PlayerEvents = {
     CommentSendCompleted: {
         comment: ICommentData;  // 送信したコメントデータ (を整形したもの)
     }
+    // ライブ視聴: UI コンポーネントからプレイヤーにコメントの送信を要求する
+    CommentSendRequest: {
+        text: string;  // 送信するコメントの本文
+    }
     // 録画再生時: 再生位置が変更されたことを通知する
     PlaybackPositionChanged: {
         playback_position: number;  // 再生位置 (秒)
