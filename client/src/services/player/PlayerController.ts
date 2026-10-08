@@ -1582,25 +1582,32 @@ class PlayerController {
                     this.player.video.oncanplaythrough = null;
                     on_canplay_called = true;
 
-                    // 再生バッファ調整のため、一旦停止させる
-                    // this.player.video.pause() を使うとプレイヤーの UI アイコンが停止してしまうので、代わりに playbackRate を使う
-                    console.log('\u001b[31m[PlayerController] Buffering...');
-                    this.player.video.playbackRate = 0;
+                    // iOS Safari (MediaSource がなく ManagedMediaSource のみ使える環境) では、playbackRate = 0 で再生バッファを調整すると
+                    // currentTime が NaN のまま再生が続き、シーク時にバッファが破棄されて再生が止まることがあるため、再生バッファの調整を行わない
+                    if ('ManagedMediaSource' in window && ('MediaSource' in window) === false) {
+                        console.log('\u001b[31m[PlayerController] Skip buffering adjustment on ManagedMediaSource only environment.');
+                    } else {
 
-                    // 再生バッファが live_playback_buffer_seconds を超えるまで 0.1 秒おきに再生バッファをチェックする
-                    // 再生バッファが live_playback_buffer_seconds を切ると再生が途切れやすくなるので (特に動きの激しい映像)、
-                    // 再生開始までの時間を若干犠牲にして、再生バッファの調整と同期に時間を割く
-                    // live_playback_buffer_seconds の値は mpegts.js の liveSyncTargetLatency 設定に渡す値と共通
-                    const live_playback_buffer_seconds = this.live_playback_buffer_seconds;  // 毎回取得すると負荷が掛かるのでキャッシュする
-                    let current_playback_buffer_sec = this.getPlaybackBufferSeconds();
-                    while (current_playback_buffer_sec < live_playback_buffer_seconds) {
-                        await Utils.sleep(0.1);
-                        current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                        // 再生バッファ調整のため、一旦停止させる
+                        // this.player.video.pause() を使うとプレイヤーの UI アイコンが停止してしまうので、代わりに playbackRate を使う
+                        console.log('\u001b[31m[PlayerController] Buffering...');
+                        this.player.video.playbackRate = 0;
+
+                        // 再生バッファが live_playback_buffer_seconds を超えるまで 0.1 秒おきに再生バッファをチェックする
+                        // 再生バッファが live_playback_buffer_seconds を切ると再生が途切れやすくなるので (特に動きの激しい映像)、
+                        // 再生開始までの時間を若干犠牲にして、再生バッファの調整と同期に時間を割く
+                        // live_playback_buffer_seconds の値は mpegts.js の liveSyncTargetLatency 設定に渡す値と共通
+                        const live_playback_buffer_seconds = this.live_playback_buffer_seconds;  // 毎回取得すると負荷が掛かるのでキャッシュする
+                        let current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                        while (current_playback_buffer_sec < live_playback_buffer_seconds) {
+                            await Utils.sleep(0.1);
+                            current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                        }
+
+                        // 再生バッファ調整のため一旦停止していた再生を再び開始
+                        this.player.video.playbackRate = 1;
+                        console.log('\u001b[31m[PlayerController] Buffering completed.');
                     }
-
-                    // 再生バッファ調整のため一旦停止していた再生を再び開始
-                    this.player.video.playbackRate = 1;
-                    console.log('\u001b[31m[PlayerController] Buffering completed.');
 
                     // ローディング状態を解除し、映像を表示する
                     player_store.is_loading = false;
