@@ -73,6 +73,7 @@ export interface ILocalClientSettings extends IClientSettings {
     timetable_hover_expand: boolean;
     timetable_dim_shopping_programs: boolean;
     timetable_genre_colors: ITimeTableGenreColors;
+    app_background_color: string;
     show_player_background_image: boolean;
     use_pure_black_player_background: boolean;
     tv_channel_sort_by_jikkyo_force: boolean;
@@ -215,6 +216,8 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
 
     // ***** 設定 → 全般 *****
 
+    // アプリの背景色 (#RRGGBB 形式) (Default: #1e1310)
+    app_background_color: '#1e1310',
     // プレイヤーの読み込み中に背景写真を表示する (Default: オン)
     show_player_background_image: true,
     // プレイヤー表示領域の背景色を完全な黒にする (Default: オフ)
@@ -389,6 +392,7 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'timetable_hover_expand',
     'timetable_dim_shopping_programs',
     'timetable_genre_colors',
+    'app_background_color',
     'show_player_background_image',
     'use_pure_black_player_background',
     'tv_channel_sort_by_jikkyo_force',

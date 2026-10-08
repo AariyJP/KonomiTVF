@@ -8,7 +8,39 @@
 </template>
 <script lang="ts" setup>
 
+import { watch } from 'vue';
+import { useTheme } from 'vuetify';
+
 import Snackbars from '@/components/Snackbars.vue';
+import useSettingsStore, { ILocalClientSettingsDefault } from '@/stores/SettingsStore';
+
+const theme = useTheme();
+const settingsStore = useSettingsStore();
+
+// 設定されたアプリの背景色を Vuetify のダークテーマに反映する
+// background-lighten-* などの派生色は、デフォルトの配色と同程度の明るさの差になるよう背景色を白・黒と混ぜて生成する
+watch(() => settingsStore.settings.app_background_color, (color) => {
+
+    // 不正な値が同期されてきた場合でも表示が崩れないよう、#RRGGBB 形式以外はデフォルトの背景色として扱う
+    const backgroundColor = /^#[0-9a-fA-F]{6}$/.test(color) ? color : ILocalClientSettingsDefault.app_background_color;
+    const rgb = [1, 3, 5].map(index => parseInt(backgroundColor.slice(index, index + 2), 16));
+
+    // 背景色を指定した色と指定した割合で混ぜた色を #RRGGBB 形式で返す
+    const mix = (target: number, ratio: number) => '#' + rgb.map(value => {
+        return Math.round(value + (target - value) * ratio).toString(16).padStart(2, '0');
+    }).join('');
+
+    const colors = theme.themes.value.dark.colors;
+    colors['background'] = backgroundColor;
+    colors['background-lighten-1'] = mix(255, 0.07);
+    colors['background-lighten-2'] = mix(255, 0.16);
+    colors['background-lighten-3'] = mix(255, 0.2);
+    colors['surface'] = backgroundColor;
+    colors['black'] = mix(0, 0.43);
+
+    // Vue アプリのマウント前に表示される body の背景色も合わせる
+    document.body.style.background = backgroundColor;
+}, { immediate: true });
 
 </script>
 <style lang="scss">
