@@ -354,6 +354,18 @@ class LiveStream:
         # ライブストリームが Offline な場合、新たにエンコードタスクを起動する
         if current_status == 'Offline':
 
+            # Offline に移行した直後は、このライブストリームの前回のエンコードタスクがまだ終了処理 (クライアントの切断・チューナーの終了) を行っている
+            # この状態でステータスを Standby にしたりチューナーを移譲したりすると、前回のタスクの終了処理が新しいクライアントを切断したり、
+            # 新しいタスクが使うチューナーを閉じたりしてしまい、Standby のまま停止して以降このライブストリームを視聴できなくなる
+            # そのため、ステータスを書き換える前に前回のタスクの完了を最大 10 秒待つ (同時に接続してきたクライアントも同じタスクの完了を待つ)
+            ## asyncio.wait() はタスクの状態を変更しないため、タイムアウトしても前回のタスクは自然終了を続ける
+            previous_live_encoding_task = self._live_encoding_task_ref
+            if previous_live_encoding_task is not None and previous_live_encoding_task.done() is False:
+                done, _ = await asyncio.wait({previous_live_encoding_task}, timeout=10.0)
+                if not done:
+                    self.__detachLiveEncodingTaskRef(previous_live_encoding_task)
+                    logging.warning(f'{self.log_prefix} Previous encoding task cleanup did not complete within 10 seconds.')
+
             # ステータスを Standby に設定
             # 現在 Idling 状態のライブストリームを探す前に設定しないと多重に LiveEncodingTask が起動しかねず、重篤な不具合につながる
             async with self._tuner_lock:
@@ -491,18 +503,6 @@ class LiveStream:
 
             # エンコードタスクを非同期で実行
             if should_start_task is True:
-
-                # Offline に移行した直後は、このライブストリームの前回のエンコードタスクがまだ終了処理 (クライアントの切断・チューナーの終了) を行っている
-                # ここで新しいエンコードタスクを起動すると、前回のタスクの終了処理が新しいクライアントを切断したり、新しいタスクが使うチューナーを閉じたりしてしまい、
-                # 新しいタスクが Standby のまま停止して以降このライブストリームを視聴できなくなるため、前回のタスクの完了を最大 10 秒待つ
-                ## asyncio.wait() はタスクの状態を変更しないため、タイムアウトしても前回のタスクは自然終了を続ける
-                previous_live_encoding_task = self._live_encoding_task_ref
-                if previous_live_encoding_task is not None and previous_live_encoding_task.done() is False:
-                    done, _ = await asyncio.wait({previous_live_encoding_task}, timeout=10.0)
-                    if not done:
-                        self.__detachLiveEncodingTaskRef(previous_live_encoding_task)
-                        logging.warning(f'{self.log_prefix} Previous encoding task cleanup did not complete within 10 seconds.')
-
                 instance = LiveEncodingTask(self)
                 self._live_encoding_task_ref = asyncio.create_task(instance.run())
                 self.__registerLiveEncodingTaskRef(self._live_encoding_task_ref)
