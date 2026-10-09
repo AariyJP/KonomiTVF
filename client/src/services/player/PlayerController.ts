@@ -1388,6 +1388,8 @@ class PlayerController {
 
         // 再生が一時的に止まってバッファリングしているとき/再び再生されはじめたときのイベント
         // バッファリングの Progress Circular の表示を制御する
+        // ライブ視聴時の再生位置の監視タイマー (waiting が連続して発火しても監視は1つだけにする)
+        let waiting_watchdog_timer_id: number | null = null;
         this.player.on('waiting', () => {
             // Progress Circular を表示する
             player_store.is_video_buffering = true;
@@ -1398,7 +1400,9 @@ class PlayerController {
             // 通信が遅いだけの場合は再生位置がバッファの末尾付近にあるため、再起動の対象にはならない
             if (this.playback_mode !== 'Live' || this.player?.type !== 'mpegts') return;
             const waiting_player = this.player;
-            window.setTimeout(() => {
+            if (waiting_watchdog_timer_id !== null) window.clearTimeout(waiting_watchdog_timer_id);
+            waiting_watchdog_timer_id = window.setTimeout(() => {
+                waiting_watchdog_timer_id = null;
                 // 3 秒経過した時点でプレイヤーが作り直されている・ロード中・停止中・バッファリングが解消済みの場合は何もしない
                 if (this.destroyed === true || this.player !== waiting_player || player_store.is_loading === true ||
                     player_store.is_video_buffering === false || this.player.video.paused === true) return;
@@ -1406,6 +1410,7 @@ class PlayerController {
                 if (video.buffered.length === 0) return;
 
                 // 再生位置がいずれかのバッファ範囲 (末尾から 0.5 秒の余裕を含む) に収まっているかを確認する
+                // currentTime が NaN の場合は比較がすべて false になるため、バッファ範囲外として扱われる
                 let is_in_buffered_range = false;
                 for (let i = 0; i < video.buffered.length; i++) {
                     if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i) + 0.5) {
@@ -1415,7 +1420,7 @@ class PlayerController {
                 }
 
                 // 再生位置が不正な値か、バッファ範囲外にある場合は自然には復帰できないため、PlayerController の再起動を要求する
-                if (Number.isFinite(video.currentTime) === false || is_in_buffered_range === false) {
+                if (is_in_buffered_range === false) {
                     console.warn('\u001b[31m[PlayerController] Playback position is out of buffered range. Restarting player.', video.currentTime);
                     player_store.event_emitter.emit('PlayerRestartRequired', {
                         message: '再生位置がずれたため、プレイヤーを再起動しています…',
