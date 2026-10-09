@@ -52,7 +52,7 @@
                     <Icon icon="fluent:color-16-regular" width="20px" />
                     <input type="color" id="app_background_color" class="app-background-color__input"
                         :value="settingsStore.settings.app_background_color"
-                        @input="settingsStore.settings.app_background_color = ($event.target as HTMLInputElement).value">
+                        @change="settingsStore.settings.app_background_color = ($event.target as HTMLInputElement).value">
                 </label>
             </div>
             <div class="settings__item settings__item--switch settings__item--sync-enabled">
@@ -276,7 +276,7 @@ import { defineComponent } from 'vue';
 import PinnedChannelSettings from '@/components/Settings/PinnedChannelSettings.vue';
 import TimeTableSettingsDialog from '@/components/Settings/TimeTableSettings.vue';
 import Message from '@/message';
-import useSettingsStore from '@/stores/SettingsStore';
+import useSettingsStore, { ILocalClientSettingsDefault } from '@/stores/SettingsStore';
 import Utils from '@/utils';
 import SettingsBase from '@/views/Settings/Base.vue';
 
@@ -297,9 +297,9 @@ export default defineComponent({
             is_form_dense: Utils.isSmartphoneHorizontal(),
 
             // アプリの背景色のプリセット
-            // 先頭は KonomiTV 標準の背景色 (ILocalClientSettingsDefault.app_background_color と一致させる)
+            // 先頭は KonomiTV 標準の背景色
             app_background_color_presets: [
-                {title: 'デフォルト', value: '#1e1310'},
+                {title: 'デフォルト', value: ILocalClientSettingsDefault.app_background_color},
                 {title: 'ダークグレー', value: '#121212'},
                 {title: 'ブラック', value: '#000000'},
                 {title: 'ネイビー', value: '#0f1729'},
