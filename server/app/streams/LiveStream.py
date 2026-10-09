@@ -262,6 +262,21 @@ class LiveStream:
         self._detached_live_encoding_task_refs.add(live_encoding_task_ref)
 
 
+    def startLiveEncodingTask(self, live_encoding_task: LiveEncodingTask) -> None:
+        """
+        LiveEncodingTask を非同期で実行し、現在実行中のエンコードタスクとして参照を保持する
+
+        Args:
+            live_encoding_task (LiveEncodingTask): 実行する LiveEncodingTask のインスタンス
+        """
+
+        # エンコードタスクを非同期で実行し、現在実行中のエンコードタスクとして登録する
+        ## エンコードタスク自身が再起動 (Restart) する際もここを経由させないと、再起動後のタスクを connect() が把握できず、
+        ## 次の接続時に終了処理中の前回タスクを待たずにチューナーを使い回してしまい、チューナーがリークする
+        self._live_encoding_task_ref = asyncio.create_task(live_encoding_task.run())
+        self.__registerLiveEncodingTaskRef(self._live_encoding_task_ref)
+
+
     @classmethod
     def getAllLiveStreams(cls) -> list[LiveStream]:
         """
@@ -503,9 +518,7 @@ class LiveStream:
 
             # エンコードタスクを非同期で実行
             if should_start_task is True:
-                instance = LiveEncodingTask(self)
-                self._live_encoding_task_ref = asyncio.create_task(instance.run())
-                self.__registerLiveEncodingTaskRef(self._live_encoding_task_ref)
+                self.startLiveEncodingTask(LiveEncodingTask(self))
 
         # ***** クライアントの登録 *****
 

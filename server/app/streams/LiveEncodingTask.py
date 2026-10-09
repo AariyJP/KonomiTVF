@@ -1584,7 +1584,7 @@ class LiveEncodingTask:
             if self._retry_count < self.MAX_RETRY_COUNT:
                 self._retry_count += 1  # カウントを増やす
                 await asyncio.sleep(0.1)  # 少し待つ
-                background_tasks.add(asyncio.create_task(self.run()))  # 新しいタスクを立ち上げる
+                self.live_stream.startLiveEncodingTask(self)  # 新しいタスクを立ち上げる
 
             # 最大再起動回数を使い果たしたので、Offline にする
             else:
