@@ -3,6 +3,7 @@
         <template v-if="!isSearchActive">
             <router-link v-ripple class="konomitv-logo" to="/tv/">
                 <img class="konomitv-logo__image" src="/assets/images/logo.svg" height="21">
+                <span class="konomitv-logo__credit">Forked by AariyJP</span>
             </router-link>
             <v-spacer></v-spacer>
             <!-- 番組表コントロール用スロット -->
@@ -215,7 +216,8 @@ watch(() => props.searchQuery, (searchQueryValue) => {
     }
 
     .konomitv-logo {
-        display: block;
+        display: flex;
+        align-items: flex-end;
         padding: 12px 8px;
         margin-left: -6px;
         border-radius: 8px;
@@ -230,6 +232,15 @@ watch(() => props.searchQuery, (searchQueryValue) => {
             @include smartphone-horizontal {
                 height: 19px;
             }
+        }
+
+        // フォーク版であることを示すクレジット表記
+        &__credit {
+            margin-left: 8px;
+            color: rgb(var(--v-theme-text-darken-2));
+            font-size: 11px;
+            line-height: 1;
+            white-space: nowrap;
         }
     }
 

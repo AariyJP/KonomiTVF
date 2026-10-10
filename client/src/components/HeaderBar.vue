@@ -2,6 +2,7 @@
     <header class="header">
         <router-link v-ripple class="konomitv-logo ml-3 ml-md-6" to="/tv/">
             <img class="konomitv-logo__image" src="/assets/images/logo.svg" height="21">
+            <span class="konomitv-logo__credit">Forked by AariyJP</span>
         </router-link>
         <v-spacer></v-spacer>
         <!-- 番組表コントロール用スロット -->
@@ -154,7 +155,8 @@ const isTimeTablePage = computed(() => route.path.startsWith('/timetable'));
     }
 
     .konomitv-logo {
-        display: block;
+        display: flex;
+        align-items: flex-end;
         padding: 12px 8px;
         border-radius: 8px;
         @include smartphone-horizontal {
@@ -166,6 +168,15 @@ const isTimeTablePage = computed(() => route.path.startsWith('/timetable'));
             @include smartphone-horizontal {
                 height: 19.5px;
             }
+        }
+
+        // フォーク版であることを示すクレジット表記
+        &__credit {
+            margin-left: 8px;
+            color: rgb(var(--v-theme-text-darken-2));
+            font-size: 11px;
+            line-height: 1;
+            white-space: nowrap;
         }
     }
 

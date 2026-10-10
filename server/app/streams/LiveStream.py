@@ -262,6 +262,21 @@ class LiveStream:
         self._detached_live_encoding_task_refs.add(live_encoding_task_ref)
 
 
+    def startLiveEncodingTask(self, live_encoding_task: LiveEncodingTask) -> None:
+        """
+        LiveEncodingTask を非同期で実行し、現在実行中のエンコードタスクとして参照を保持する
+
+        Args:
+            live_encoding_task (LiveEncodingTask): 実行する LiveEncodingTask のインスタンス
+        """
+
+        # エンコードタスクを非同期で実行し、現在実行中のエンコードタスクとして登録する
+        ## エンコードタスク自身が再起動 (Restart) する際もここを経由させないと、再起動後のタスクを connect() が把握できず、
+        ## 次の接続時に終了処理中の前回タスクを待たずにチューナーを使い回してしまい、チューナーがリークする
+        self._live_encoding_task_ref = asyncio.create_task(live_encoding_task.run())
+        self.__registerLiveEncodingTaskRef(self._live_encoding_task_ref)
+
+
     @classmethod
     def getAllLiveStreams(cls) -> list[LiveStream]:
         """
@@ -353,6 +368,18 @@ class LiveStream:
 
         # ライブストリームが Offline な場合、新たにエンコードタスクを起動する
         if current_status == 'Offline':
+
+            # Offline に移行した直後は、このライブストリームの前回のエンコードタスクがまだ終了処理 (クライアントの切断・チューナーの終了) を行っている
+            # この状態でステータスを Standby にしたりチューナーを移譲したりすると、前回のタスクの終了処理が新しいクライアントを切断したり、
+            # 新しいタスクが使うチューナーを閉じたりしてしまい、Standby のまま停止して以降このライブストリームを視聴できなくなる
+            # そのため、ステータスを書き換える前に前回のタスクの完了を最大 10 秒待つ (同時に接続してきたクライアントも同じタスクの完了を待つ)
+            ## asyncio.wait() はタスクの状態を変更しないため、タイムアウトしても前回のタスクは自然終了を続ける
+            previous_live_encoding_task = self._live_encoding_task_ref
+            if previous_live_encoding_task is not None and previous_live_encoding_task.done() is False:
+                done, _ = await asyncio.wait({previous_live_encoding_task}, timeout=10.0)
+                if not done:
+                    self.__detachLiveEncodingTaskRef(previous_live_encoding_task)
+                    logging.warning(f'{self.log_prefix} Previous encoding task cleanup did not complete within 10 seconds.')
 
             # ステータスを Standby に設定
             # 現在 Idling 状態のライブストリームを探す前に設定しないと多重に LiveEncodingTask が起動しかねず、重篤な不具合につながる
@@ -491,9 +518,7 @@ class LiveStream:
 
             # エンコードタスクを非同期で実行
             if should_start_task is True:
-                instance = LiveEncodingTask(self)
-                self._live_encoding_task_ref = asyncio.create_task(instance.run())
-                self.__registerLiveEncodingTaskRef(self._live_encoding_task_ref)
+                self.startLiveEncodingTask(LiveEncodingTask(self))
 
         # ***** クライアントの登録 *****
 

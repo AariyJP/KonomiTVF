@@ -1134,6 +1134,18 @@ class PlayerController {
             this.setControlDisplayTimer(event.event, event.is_player_region_event, event.timeout_seconds);
         });
 
+        // ライブ視聴時のみ: UI コンポーネントからコメントの送信を要求されたときのイベントハンドラーを登録する
+        // コメントパネルのコメント送信欄から利用される
+        // プレイヤー内のコメント入力欄に送信するコメントをセットしてから送信することで、色・位置・サイズの設定や送信処理をそのまま流用する
+        if (this.playback_mode === 'Live') {
+            player_store.event_emitter.off('CommentSendRequest');  // CommentSendRequest イベントの全てのイベントハンドラーを削除
+            player_store.event_emitter.on('CommentSendRequest', (event) => {
+                if (this.destroyed === true || this.player === null || this.player.comment === null) return;
+                this.player.template.commentInput.value = event.text;
+                this.player.comment.send();
+            });
+        }
+
         // 録画再生時のみ: UI コンポーネントから指定秒数へのシークを要求されたときのイベントハンドラーを登録する
         // コメントリストからコメントをクリックした際などに利用される
         if (this.playback_mode === 'Video') {
@@ -1354,11 +1366,67 @@ class PlayerController {
         this.player.on('play', on_play_or_pause);
         this.player.on('pause', on_play_or_pause);
 
+        // ライブ視聴: 同期 (再生再開時の自動同期・同期ボタン・キーボードショートカット) の前に再生位置が正常かを確認する
+        // iOS Safari の ManagedMediaSource では currentTime が NaN のまま再生が続くことがあり、この状態でシークすると
+        // ブラウザ側でバッファがすべて破棄されて再生が止まってしまうため、シークせずにプレイヤーを再起動して最新の映像に同期する
+        // ライブ視聴では同期・再生再開のどちらも最新の映像へ移動する操作なので、再起動しても結果は変わらない
+        if (this.playback_mode === 'Live') {
+            const original_sync = this.player.sync.bind(this.player);
+            this.player.sync = (quiet?: boolean) => {
+                if (this.player !== null && this.player.type === 'mpegts' && player_store.is_loading === false &&
+                    Number.isFinite(this.player.video.currentTime) === false) {
+                    console.warn('\u001b[31m[PlayerController] currentTime is not finite. Restarting player instead of seeking.');
+                    player_store.event_emitter.emit('PlayerRestartRequired', {
+                        message: '最新の映像に同期しています…',
+                        is_error_message: false,
+                    });
+                    return;
+                }
+                original_sync(quiet);
+            };
+        }
+
         // 再生が一時的に止まってバッファリングしているとき/再び再生されはじめたときのイベント
         // バッファリングの Progress Circular の表示を制御する
+        // ライブ視聴時の再生位置の監視タイマー (waiting が連続して発火しても監視は1つだけにする)
+        let waiting_watchdog_timer_id: number | null = null;
         this.player.on('waiting', () => {
             // Progress Circular を表示する
             player_store.is_video_buffering = true;
+
+            // ライブ視聴 (mpegts.js) のみ、再生位置がバッファから外れたまま復帰できない状態を検出してプレイヤーを再起動する
+            // iOS Safari の ManagedMediaSource では currentTime が NaN のまま再生が続くことがあり、この状態でシークすると
+            // シーク先を含むバッファがブラウザ側で破棄され、seeking が完了せずに永久にバッファリング中のままになってしまう
+            // 通信が遅いだけの場合は再生位置がバッファの末尾付近にあるため、再起動の対象にはならない
+            if (this.playback_mode !== 'Live' || this.player?.type !== 'mpegts') return;
+            const waiting_player = this.player;
+            if (waiting_watchdog_timer_id !== null) window.clearTimeout(waiting_watchdog_timer_id);
+            waiting_watchdog_timer_id = window.setTimeout(() => {
+                waiting_watchdog_timer_id = null;
+                // 3 秒経過した時点でプレイヤーが作り直されている・ロード中・停止中・バッファリングが解消済みの場合は何もしない
+                if (this.destroyed === true || this.player !== waiting_player || player_store.is_loading === true ||
+                    player_store.is_video_buffering === false || this.player.video.paused === true) return;
+                const video = this.player.video;
+                if (video.buffered.length === 0) return;
+
+                // 再生位置がいずれかのバッファ範囲 (末尾から 0.5 秒の余裕を含む) に収まっているかを確認する
+                // currentTime が NaN の場合は比較がすべて false になるため、バッファ範囲外として扱われる
+                let is_in_buffered_range = false;
+                for (let i = 0; i < video.buffered.length; i++) {
+                    if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i) + 0.5) {
+                        is_in_buffered_range = true;
+                        break;
+                    }
+                }
+
+                // 再生位置が不正な値か、バッファ範囲外にある場合は自然には復帰できないため、PlayerController の再起動を要求する
+                if (is_in_buffered_range === false) {
+                    console.warn('\u001b[31m[PlayerController] Playback position is out of buffered range. Restarting player.', video.currentTime);
+                    player_store.event_emitter.emit('PlayerRestartRequired', {
+                        message: '再生位置がずれたため、プレイヤーを再起動しています…',
+                    });
+                }
+            }, 3 * 1000);
         });
         this.player.on('playing', () => {
             // ロード中 (映像が表示されていない) でなければ Progress Circular を非表示にする
@@ -1531,25 +1599,32 @@ class PlayerController {
                     this.player.video.oncanplaythrough = null;
                     on_canplay_called = true;
 
-                    // 再生バッファ調整のため、一旦停止させる
-                    // this.player.video.pause() を使うとプレイヤーの UI アイコンが停止してしまうので、代わりに playbackRate を使う
-                    console.log('\u001b[31m[PlayerController] Buffering...');
-                    this.player.video.playbackRate = 0;
+                    // iOS Safari (MediaSource がなく ManagedMediaSource のみ使える環境) では、playbackRate = 0 で再生バッファを調整すると
+                    // currentTime が NaN のまま再生が続き、シーク時にバッファが破棄されて再生が止まることがあるため、再生バッファの調整を行わない
+                    if ('ManagedMediaSource' in window && ('MediaSource' in window) === false) {
+                        console.log('\u001b[31m[PlayerController] Skip buffering adjustment on ManagedMediaSource only environment.');
+                    } else {
 
-                    // 再生バッファが live_playback_buffer_seconds を超えるまで 0.1 秒おきに再生バッファをチェックする
-                    // 再生バッファが live_playback_buffer_seconds を切ると再生が途切れやすくなるので (特に動きの激しい映像)、
-                    // 再生開始までの時間を若干犠牲にして、再生バッファの調整と同期に時間を割く
-                    // live_playback_buffer_seconds の値は mpegts.js の liveSyncTargetLatency 設定に渡す値と共通
-                    const live_playback_buffer_seconds = this.live_playback_buffer_seconds;  // 毎回取得すると負荷が掛かるのでキャッシュする
-                    let current_playback_buffer_sec = this.getPlaybackBufferSeconds();
-                    while (current_playback_buffer_sec < live_playback_buffer_seconds) {
-                        await Utils.sleep(0.1);
-                        current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                        // 再生バッファ調整のため、一旦停止させる
+                        // this.player.video.pause() を使うとプレイヤーの UI アイコンが停止してしまうので、代わりに playbackRate を使う
+                        console.log('\u001b[31m[PlayerController] Buffering...');
+                        this.player.video.playbackRate = 0;
+
+                        // 再生バッファが live_playback_buffer_seconds を超えるまで 0.1 秒おきに再生バッファをチェックする
+                        // 再生バッファが live_playback_buffer_seconds を切ると再生が途切れやすくなるので (特に動きの激しい映像)、
+                        // 再生開始までの時間を若干犠牲にして、再生バッファの調整と同期に時間を割く
+                        // live_playback_buffer_seconds の値は mpegts.js の liveSyncTargetLatency 設定に渡す値と共通
+                        const live_playback_buffer_seconds = this.live_playback_buffer_seconds;  // 毎回取得すると負荷が掛かるのでキャッシュする
+                        let current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                        while (current_playback_buffer_sec < live_playback_buffer_seconds) {
+                            await Utils.sleep(0.1);
+                            current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                        }
+
+                        // 再生バッファ調整のため一旦停止していた再生を再び開始
+                        this.player.video.playbackRate = 1;
+                        console.log('\u001b[31m[PlayerController] Buffering completed.');
                     }
-
-                    // 再生バッファ調整のため一旦停止していた再生を再び開始
-                    this.player.video.playbackRate = 1;
-                    console.log('\u001b[31m[PlayerController] Buffering completed.');
 
                     // ローディング状態を解除し、映像を表示する
                     player_store.is_loading = false;

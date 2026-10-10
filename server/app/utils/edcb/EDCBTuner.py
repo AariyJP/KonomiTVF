@@ -8,6 +8,7 @@ import time
 from threading import Lock
 from typing import ClassVar, Literal, cast
 
+from app import logging
 from app.utils.edcb import SetChInfo
 from app.utils.edcb.CtrlCmdUtil import CtrlCmdUtil
 from app.utils.edcb.EDCBUtil import EDCBUtil
@@ -435,16 +436,19 @@ class EDCBTuner:
             force (bool): 制御権限の一致を無視して終了するかどうか
 
         Returns:
-            bool: チューナーを終了できたかどうか
+            bool: チューナーインスタンスを解放したかどうか (制御権限が一致せず何もしなかった場合のみ False)
         """
 
         # 制御権限が一致していない場合は処理しない
         if force is False and (owner_live_stream_id is None or self._isOwner(owner_live_stream_id) is False):
             return False
 
-        # チューナーを閉じ、実行結果を取得する
+        # チューナーを閉じる
+        ## EpgDataCap_Bon が既に終了している (チューナーの起動に失敗した・BonDriver の接続先が切断された) 場合は失敗するが、
+        ## 以降の処理でこのインスタンスは必ず解放されるため、呼び出し元が解放済みのインスタンスを使い回さないよう戻り値には反映しない
         edcb = CtrlCmdUtil()
-        result = await edcb.sendNwTVIDClose(self._edcb_networktv_id)
+        if await edcb.sendNwTVIDClose(self._edcb_networktv_id) is False:
+            logging.warning(f'Failed to close EDCB NetworkTV (ID: {self._edcb_networktv_id}). The tuner may have already been closed.')
 
         # チューナーが閉じられたので、プロセス ID を None に戻す
         self._edcb_process_id = None
@@ -463,7 +467,7 @@ class EDCBTuner:
         if self in EDCBTuner.__instances:
             EDCBTuner.__instances.remove(self)
 
-        return result
+        return True
 
 
     @classmethod

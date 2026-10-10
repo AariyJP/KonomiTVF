@@ -32,6 +32,29 @@
                 <span class="ml-1">番組表の表示設定を開く</span>
             </v-btn>
             <v-divider class="mt-6"></v-divider>
+            <div class="settings__item settings__item--sync-enabled">
+                <label class="settings__item-heading" for="app_background_color">アプリの背景色</label>
+                <label class="settings__item-label" for="app_background_color">
+                    KonomiTV 全体の背景色を変更できます。デフォルトは KonomiTV 標準の茶色がかった黒です。<br>
+                    プリセットから選ぶか、右端のボタンから好きな色を指定できます。パネルやカードなどの色も、背景色に合わせて自動で調整されます。<br>
+                </label>
+            </div>
+            <div class="app-background-color">
+                <button v-for="preset in app_background_color_presets" :key="preset.value" v-ripple
+                    class="app-background-color__swatch"
+                    :class="{'app-background-color__swatch--selected': settingsStore.settings.app_background_color.toLowerCase() === preset.value}"
+                    :style="{background: preset.value}" :title="preset.title" :aria-label="preset.title"
+                    @click="settingsStore.settings.app_background_color = preset.value">
+                </button>
+                <label class="app-background-color__swatch" title="好きな色を指定する"
+                    :class="{'app-background-color__swatch--selected': is_custom_app_background_color}"
+                    :style="{background: settingsStore.settings.app_background_color}">
+                    <Icon icon="fluent:color-16-regular" width="20px" />
+                    <input type="color" id="app_background_color" class="app-background-color__input"
+                        :value="settingsStore.settings.app_background_color"
+                        @change="settingsStore.settings.app_background_color = ($event.target as HTMLInputElement).value">
+                </label>
+            </div>
             <div class="settings__item settings__item--switch settings__item--sync-enabled">
                 <label class="settings__item-heading" for="show_player_background_image">プレイヤーの読み込み中に背景写真を表示する</label>
                 <label class="settings__item-label" for="show_player_background_image">
@@ -253,7 +276,7 @@ import { defineComponent } from 'vue';
 import PinnedChannelSettings from '@/components/Settings/PinnedChannelSettings.vue';
 import TimeTableSettingsDialog from '@/components/Settings/TimeTableSettings.vue';
 import Message from '@/message';
-import useSettingsStore from '@/stores/SettingsStore';
+import useSettingsStore, { ILocalClientSettingsDefault } from '@/stores/SettingsStore';
 import Utils from '@/utils';
 import SettingsBase from '@/views/Settings/Base.vue';
 
@@ -272,6 +295,17 @@ export default defineComponent({
 
             // フォームを小さくするかどうか
             is_form_dense: Utils.isSmartphoneHorizontal(),
+
+            // アプリの背景色のプリセット
+            // 先頭は KonomiTV 標準の背景色
+            app_background_color_presets: [
+                {title: 'デフォルト', value: ILocalClientSettingsDefault.app_background_color},
+                {title: 'ダークグレー', value: '#121212'},
+                {title: 'ブラック', value: '#000000'},
+                {title: 'ネイビー', value: '#0f1729'},
+                {title: 'グリーン', value: '#0f1f19'},
+                {title: 'パープル', value: '#1c1429'},
+            ],
 
             // ピン留め中チャンネルの並び替え設定のモーダルを表示するか
             pinned_channel_settings_modal: false,
@@ -315,6 +349,12 @@ export default defineComponent({
     },
     computed: {
         ...mapStores(useSettingsStore),
+
+        // 現在の背景色がプリセット以外の色 (カラーピッカーで指定した色) かどうか
+        is_custom_app_background_color(): boolean {
+            const color = this.settingsStore.settings.app_background_color.toLowerCase();
+            return this.app_background_color_presets.every(preset => preset.value !== color);
+        },
     },
     methods: {
 
@@ -391,6 +431,43 @@ export default defineComponent({
 
 </script>
 <style lang="scss" scoped>
+
+// アプリの背景色の選択欄
+.app-background-color {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+
+    &__swatch {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid rgb(var(--v-theme-background-lighten-3));
+        color: rgb(var(--v-theme-text));
+        cursor: pointer;
+        overflow: hidden;
+        transition: border-color 0.15s ease;
+
+        &--selected {
+            border-color: rgb(var(--v-theme-primary));
+        }
+    }
+
+    // ブラウザ標準のカラーピッカーを開くための input 要素は、ボタン全体に透明に重ねる
+    &__input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+}
 
 // 設定インポートの確認ダイヤログのタイトル
 .import-settings-dialog__title {

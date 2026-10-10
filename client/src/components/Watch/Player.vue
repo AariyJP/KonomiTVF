@@ -19,7 +19,7 @@
         </v-progress-circular>
         <div class="watch-player__dplayer"></div>
         <div class="watch-player__dplayer-setting-cover"
-            :class="{'watch-player__dplayer-setting-cover--display': playerStore.is_player_setting_panel_open}"
+            :class="{'watch-player__dplayer-setting-cover--display': playerStore.is_player_setting_panel_open && playerStore.is_fullscreen === false}"
             @click="handleSettingCoverClick"></div>
         <div class="watch-player__button"
                 @mousemove="playerStore.event_emitter.emit('SetControlDisplayTimer', {event: $event})"
@@ -526,6 +526,8 @@ _::-webkit-full-page-media, _:future, :root .dplayer-subtitle-icon[aria-label='�
 
         &--display {
             // タッチデバイスかつスマホ縦画面のみ、設定パネルを開いた時にカバーを表示する
+            // フルスクリーン時 (iPhone Safari の疑似フルスクリーンで画面を回転している時など) は設定パネルが画面下部にオーバーレイ配置されず、
+            // カバーが設定パネルより前面に来て操作できなくなるため、テンプレート側で非フルスクリーン時のみ表示している
             @media (hover: none) {
                 @include smartphone-vertical {
                     opacity: 1;

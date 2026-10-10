@@ -894,7 +894,10 @@ class LiveEncodingTask:
                     self.live_stream.setStatus('Offline', 'チューナーの起動に失敗しました。空きチューナーが不足していると考えられます。(E-02E)')
 
                     # チューナーを閉じる
-                    await self.live_stream.tuner.close(self.live_stream.live_stream_id)
+                    ## tuner.close() した時点でそのチューナーインスタンスは制御権限を失い意味をなさなくなるので、LiveStream インスタンスのプロパティからも削除する
+                    ## 削除しないと、次回のエンコードタスクが解放済みのインスタンスを使い回し、制御権限の不一致で即座に起動失敗し続けてしまう
+                    if await self.live_stream.tuner.close(self.live_stream.live_stream_id) is True:
+                        self.live_stream.tuner = None
 
                     # すべての視聴中クライアントのライブストリームへの接続を切断する
                     self.live_stream.disconnectAll()
@@ -932,7 +935,9 @@ class LiveEncodingTask:
                     self.live_stream.setStatus('Offline', 'チューナーへの接続に失敗しました。チューナー側に何らかの問題があるかもしれません。(E-03E)')
 
                     # チューナーを閉じる
-                    await self.live_stream.tuner.close(self.live_stream.live_stream_id)
+                    ## tuner.close() した時点でそのチューナーインスタンスは制御権限を失い意味をなさなくなるので、LiveStream インスタンスのプロパティからも削除する
+                    if await self.live_stream.tuner.close(self.live_stream.live_stream_id) is True:
+                        self.live_stream.tuner = None
 
                     # すべての視聴中クライアントのライブストリームへの接続を切断する
                     self.live_stream.disconnectAll()
@@ -1579,7 +1584,7 @@ class LiveEncodingTask:
             if self._retry_count < self.MAX_RETRY_COUNT:
                 self._retry_count += 1  # カウントを増やす
                 await asyncio.sleep(0.1)  # 少し待つ
-                background_tasks.add(asyncio.create_task(self.run()))  # 新しいタスクを立ち上げる
+                self.live_stream.startLiveEncodingTask(self)  # 新しいタスクを立ち上げる
 
             # 最大再起動回数を使い果たしたので、Offline にする
             else:
