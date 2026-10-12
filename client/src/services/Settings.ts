@@ -95,8 +95,8 @@ export interface IClientSettings {
     capture_copy_to_clipboard: boolean;
     // sync_settings: 同期無効
     prefer_posting_to_nicolive: boolean;
-    comment_speed_rate: number;
-    comment_font_size: number;
+    // comment_speed_rate: 同期無効
+    // comment_font_size: 同期無効
     close_comment_form_after_sending: boolean;
     mute_vulgar_comments: boolean;
     mute_abusive_discriminatory_prejudiced_comments: boolean;

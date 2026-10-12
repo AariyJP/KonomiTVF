@@ -117,8 +117,8 @@ class ClientSettings(BaseModel):
     capture_copy_to_clipboard: bool = False
     # sync_settings: 同期無効
     prefer_posting_to_nicolive: bool = True
-    comment_speed_rate: Annotated[float, PositiveFloat] = 1.0
-    comment_font_size: Annotated[int, PositiveInt] = 34
+    # comment_speed_rate: 同期無効
+    # comment_font_size: 同期無効
     close_comment_form_after_sending: bool = True
     mute_vulgar_comments: bool = True
     mute_abusive_discriminatory_prejudiced_comments: bool = True

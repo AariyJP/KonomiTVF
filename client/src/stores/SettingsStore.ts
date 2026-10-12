@@ -433,8 +433,8 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'capture_copy_to_clipboard',
     // sync_settings: 同期無効
     'prefer_posting_to_nicolive',
-    'comment_speed_rate',
-    'comment_font_size',
+    // comment_speed_rate: 同期無効
+    // comment_font_size: 同期無効
     'close_comment_form_after_sending',
     'mute_vulgar_comments',
     'mute_abusive_discriminatory_prejudiced_comments',
