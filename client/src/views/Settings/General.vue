@@ -176,11 +176,53 @@
                 <label class="settings__item-heading" for="discord_rich_presence">Discord に視聴中の番組を表示する</label>
                 <label class="settings__item-label" for="discord_rich_presence">
                     オンにすると、テレビを視聴中の番組を Discord のアクティビティ (Rich Presence) に表示します。<br>
-                    KonomiTV サーバーと同じ PC で Discord が起動している必要があります。また、設定のデバイス間同期がオンのときだけ有効です。<br>
+                    設定のデバイス間同期がオンのときだけ有効です。<br>
                 </label>
                 <v-switch class="settings__item-switch" color="primary" id="discord_rich_presence" hide-details
                     v-model="settingsStore.settings.discord_rich_presence">
                 </v-switch>
+            </div>
+            <div class="settings__item settings__item--sync-enabled"
+                :class="{'settings__item--disabled': settingsStore.settings.discord_rich_presence === false}">
+                <div class="settings__item-heading">Discord に表示する方法</div>
+                <div class="settings__item-label">
+                    <ul class="ml-4">
+                        <li>パイプで接続：KonomiTV サーバーと同じ PC で起動している Discord に表示します。アカウント連携は不要です。</li>
+                        <li>アカウント連携：KonomiTV アカウントに連携した Discord アカウントに表示します。サーバーと同じ PC で Discord が起動していなくても表示できます。</li>
+                    </ul>
+                </div>
+                <v-radio-group class="mt-2" color="primary" inline hide-details
+                    :disabled="settingsStore.settings.discord_rich_presence === false"
+                    v-model="settingsStore.settings.discord_rich_presence_connection_type">
+                    <v-radio label="パイプで接続" value="IPC"></v-radio>
+                    <v-radio label="アカウント連携" value="AccountLinking"></v-radio>
+                </v-radio-group>
+            </div>
+            <div class="discord-account mt-4" v-if="settingsStore.settings.discord_rich_presence_connection_type === 'AccountLinking'">
+                <template v-if="userStore.user?.discord_user_id">
+                    <img class="discord-account__icon" :src="userStore.user.discord_user_icon_url ?? ''">
+                    <div class="discord-account__info">
+                        <div class="discord-account__info-name">{{userStore.user.discord_user_name}} と連携しています</div>
+                        <div class="discord-account__info-description">Discord User ID: {{userStore.user.discord_user_id}}</div>
+                    </div>
+                    <v-btn class="discord-account__button" color="secondary" width="130" height="56" variant="flat"
+                        @click="logoutDiscordAccount()">
+                        <Icon icon="fluent:plug-disconnected-20-filled" class="mr-2" height="26" />連携解除
+                    </v-btn>
+                </template>
+                <template v-else>
+                    <Icon class="discord-account__icon" icon="fa6-brands:discord" width="48px" />
+                    <div class="discord-account__info">
+                        <div class="discord-account__info-name">Discord アカウントと連携していません</div>
+                        <div class="discord-account__info-description">
+                            連携すると、この KonomiTV アカウントでの視聴中の番組が Discord アカウントに表示されます。
+                        </div>
+                    </div>
+                    <v-btn class="discord-account__button" color="secondary" width="130" height="56" variant="flat"
+                        @click="loginDiscordAccount()">
+                        <Icon icon="fluent:plug-connected-20-filled" class="mr-2" height="26" />連携する
+                    </v-btn>
+                </template>
             </div>
             <v-divider class="mt-6"></v-divider>
             <div class="settings__item">
@@ -276,7 +318,9 @@ import { defineComponent } from 'vue';
 import PinnedChannelSettings from '@/components/Settings/PinnedChannelSettings.vue';
 import TimeTableSettingsDialog from '@/components/Settings/TimeTableSettings.vue';
 import Message from '@/message';
+import Discord from '@/services/Discord';
 import useSettingsStore, { ILocalClientSettingsDefault } from '@/stores/SettingsStore';
+import useUserStore from '@/stores/UserStore';
 import Utils from '@/utils';
 import SettingsBase from '@/views/Settings/Base.vue';
 
@@ -348,7 +392,7 @@ export default defineComponent({
         };
     },
     computed: {
-        ...mapStores(useSettingsStore),
+        ...mapStores(useSettingsStore, useUserStore),
 
         // 現在の背景色がプリセット以外の色 (カラーピッカーで指定した色) かどうか
         is_custom_app_background_color(): boolean {
@@ -356,7 +400,101 @@ export default defineComponent({
             return this.app_background_color_presets.every(preset => preset.value !== color);
         },
     },
+    async created() {
+
+        // Discord アカウントとの連携状態を表示するため、アカウント情報を更新
+        await this.userStore.fetchUser();
+
+        // もしハッシュ (# から始まるフラグメント) に何か指定されていたら、
+        // スマホ・タブレットでの Discord の OAuth 連携のコールバックの結果が入っている可能性が高いので、パースを試みる
+        if (location.hash !== '') {
+            const params = new URLSearchParams(location.hash.replace('#', ''));
+            if (params.get('status') !== null && params.get('detail') !== null) {
+                this.onDiscordOAuthCallbackReceived(parseInt(params.get('status')!), params.get('detail')!);
+                // URL からフラグメントを削除
+                history.replaceState(null, '', ' ');
+            }
+        }
+    },
     methods: {
+
+        // Discord アカウントと連携する
+        // ニコニコアカウントの連携 (Settings/Jikkyo.vue) と同じく、PC ではポップアップ、モバイルではリダイレクトで OAuth 連携を行う
+        async loginDiscordAccount() {
+
+            // ログインしていない場合はエラーにする
+            if (this.userStore.is_logged_in === false) {
+                Message.warning('連携をはじめるには、KonomiTV アカウントにログインしてください。');
+                return;
+            }
+
+            // Discord アカウントと連携するための認証 URL を取得
+            const authorization_url = await Discord.fetchAuthorizationURL();
+            if (authorization_url === null) {
+                return;
+            }
+
+            // モバイルデバイスではポップアップが事実上使えないので、リダイレクトで連携する
+            if (Utils.isMobileDevice() === true) {
+                location.href = authorization_url;
+                return;
+            }
+
+            // OAuth 連携のため、認証 URL をポップアップウインドウで開く
+            const popup_window = window.open(authorization_url, 'KonomiTV-OAuthPopup', Utils.getWindowFeatures());
+            if (popup_window === null) {
+                Message.error('ポップアップウインドウを開けませんでした。');
+                return;
+            }
+
+            // 認証完了 or 失敗後、ポップアップウインドウから送信される結果を受信
+            const onMessage = (event: MessageEvent) => {
+
+                // すでにウインドウが閉じている場合や、OAuth 連携の結果ではない message の場合は実行しない
+                if (popup_window.closed) return;
+                if (Utils.typeof(event.data) !== 'object') return;
+                if (('KonomiTV-OAuthPopup' in event.data) === false) return;
+
+                // 認証は完了したので、ポップアップウインドウを閉じ、リスナーを解除する
+                popup_window.close();
+                window.removeEventListener('message', onMessage);
+                this.onDiscordOAuthCallbackReceived(
+                    event.data['KonomiTV-OAuthPopup']['status'] as number,
+                    event.data['KonomiTV-OAuthPopup']['detail'] as string,
+                );
+            };
+            window.addEventListener('message', onMessage);
+        },
+
+        // Discord の OAuth 連携の結果を画面に通知する
+        async onDiscordOAuthCallbackReceived(authorization_status: number, authorization_detail: string) {
+            console.log(`DiscordAuthCallbackAPI: Status: ${authorization_status} / Detail: ${authorization_detail}`);
+
+            // OAuth 連携に失敗した
+            if (authorization_status !== 200) {
+                if (authorization_detail.startsWith('Authorization was denied')) {
+                    Message.error('Discord アカウントとの連携がキャンセルされました。');
+                } else {
+                    Message.error(`Discord アカウントとの連携に失敗しました。(${authorization_detail})`);
+                }
+                return;
+            }
+
+            // アカウント情報を強制的に更新
+            await this.userStore.fetchUser(true);
+            Message.success('Discord アカウントと連携しました。');
+        },
+
+        // Discord アカウントとの連携を解除する
+        async logoutDiscordAccount() {
+            if (await Discord.logoutAccount() === false) {
+                return;
+            }
+
+            // アカウント情報を強制的に更新
+            await this.userStore.fetchUser(true);
+            Message.success('Discord アカウントとの連携を解除しました。');
+        },
 
         // 設定データをエクスポートする
         exportSettings() {
@@ -431,6 +569,51 @@ export default defineComponent({
 
 </script>
 <style lang="scss" scoped>
+
+// Discord アカウントの連携状態の表示欄
+.discord-account {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 15px;
+    background: rgb(var(--v-theme-background-lighten-2));
+    @include smartphone-vertical {
+        flex-wrap: wrap;
+        padding: 16px 12px;
+        border-radius: 10px;
+    }
+
+    &__icon {
+        flex-shrink: 0;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    &__info {
+        flex-grow: 1;
+        min-width: 0;
+        &-name {
+            font-size: 18px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+        &-description {
+            margin-top: 4px;
+            color: rgb(var(--v-theme-text-darken-1));
+            font-size: 13.5px;
+        }
+    }
+
+    &__button {
+        flex-shrink: 0;
+        @include smartphone-vertical {
+            width: 100% !important;
+        }
+    }
+}
 
 // アプリの背景色の選択欄
 .app-background-color {

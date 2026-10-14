@@ -67,6 +67,7 @@ export interface IClientSettings {
     video_panel_active_tab: 'RecordedProgram' | 'Series' | 'Comment' | 'Twitter';
     video_watched_history_max_count: number;
     discord_rich_presence: boolean;
+    discord_rich_presence_connection_type: 'IPC' | 'AccountLinking';
     tv_streaming_quality: LiveStreamingQuality;
     tv_streaming_quality_cellular: LiveStreamingQuality;
     tv_data_saver_mode: boolean;

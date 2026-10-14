@@ -9,7 +9,9 @@
   - ニコニコ実況 / NX-Jikkyo のコメント表示・投稿、Twitter / Bluesky での実況投稿 (キャプチャ添付・リプライツリー実況)
   - データ放送、字幕・文字スーパー、L字画面のクロップ、キャプチャ、番組表、EDCB と連携した録画予約
   - KonomiTV アカウントによるクライアント設定のデバイス間同期。`sync_settings` (同期のオン・オフ自体)、`selected_twitter_panel_account` (DB 連番 ID に依存)、`comment_speed_rate` / `comment_font_size` (デバイスの画面サイズごとに調整したい値) 以外の設定はすべてアカウントに同期され、設定画面では同期される項目に「デバイス間同期有効」ラベルを表示する
-  - Discord Rich Presence: KonomiTV サーバーと同じ PC で起動している Discord に視聴中の番組を表示する (`server/app/utils/DiscordRichPresenceTask.py` / `DiscordRPCClient.py`)。クライアント設定 `discord_rich_presence` で切り替え、サーバー側で参照するため設定同期がオンのときだけ有効
+  - Discord Rich Presence: Discord に視聴中の番組を表示する (`server/app/utils/DiscordRichPresenceTask.py`)。クライアント設定 `discord_rich_presence` で切り替え、サーバー側で参照するため設定同期がオンのときだけ有効
+    - 表示方法は `discord_rich_presence_connection_type` で選ぶ。`IPC` は KonomiTV サーバーと同じ PC で起動している Discord に名前付きパイプで接続する (`DiscordRPCClient.py`)。`AccountLinking` は KonomiTV アカウントに OAuth (PKCE の Public Client) で連携した Discord アカウントに、Discord Social SDK で表示する (`DiscordSocialSDKClient.py` / `routers/DiscordRouter.py`)
+    - Discord Social SDK は再配布できないため同梱しない。Discord Developer Portal から入手した SDK を `server/thirdparty/DiscordSocialSDK/` に展開して使い、ctypes で C API を呼び出す
   - iPhone Safari など Fullscreen API がないブラウザ向けの疑似フルスクリーン (`PlayerStore.is_pseudo_fullscreen`)。縦向きでは `Watch.vue` の CSS で視聴画面全体を 90° 回転させて横画面表示にし、右側のパネルも開ける。回転中は Swiper のスワイプ判定が逆転するため、パネルのチャンネルタブではスワイプによるタブ切り替えを無効化している
 - サーバーとクライアントの両方を各ユーザーの PC で動かす前提で、Windows サービス・Linux の pm2 サービス・Docker で動作する
 - 動画プレイヤーには DPlayer のフォーク `github:AariyJP/DPlayerF#main` (tsukumijima/DPlayer v1.33.2 ベース) を使う。音量バーの常時表示・拡幅・1% 単位のホイール / 矢印キー操作と、big / small サイズのコメントで基準フォントサイズが変わってしまう問題の修正を含む

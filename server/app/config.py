@@ -90,6 +90,7 @@ class ClientSettings(BaseModel):
     video_panel_active_tab: Literal['RecordedProgram', 'Series', 'Comment', 'Twitter'] = 'RecordedProgram'
     video_watched_history_max_count: Annotated[int, PositiveInt] = 50
     discord_rich_presence: bool = False
+    discord_rich_presence_connection_type: Literal['IPC', 'AccountLinking'] = 'IPC'
     tv_streaming_quality: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '1080p'
     tv_streaming_quality_cellular: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '480p'
     tv_data_saver_mode: bool = False

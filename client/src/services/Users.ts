@@ -11,6 +11,9 @@ export interface IUser {
     niconico_user_id: number | null;
     niconico_user_name: string | null;
     niconico_user_premium: boolean | null;
+    discord_user_id: string | null;
+    discord_user_name: string | null;
+    discord_user_icon_url: string | null;
     twitter_accounts: ITwitterAccount[];
     bluesky_accounts: IBlueskyAccount[];
     account_links: IAccountLink[];

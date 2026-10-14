@@ -281,6 +281,9 @@ class User(PydanticModel):
     niconico_user_id: int | None
     niconico_user_name: str | None
     niconico_user_premium: bool | None
+    discord_user_id: str | None
+    discord_user_name: str | None
+    discord_user_icon_url: str | None
     twitter_accounts: list[TwitterAccount]  # 追加カラム
     bluesky_accounts: list[BlueskyAccount]  # 追加カラム
     account_links: list[AccountLink]  # 追加カラム
