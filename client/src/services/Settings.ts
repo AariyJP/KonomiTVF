@@ -145,6 +145,7 @@ export interface IServerSettings {
     video: {
         recorded_folders: string[];
         exclude_scan_paths: string[];
+        recorded_folders_polling_interval: number;
     };
     capture: {
         upload_folders: string[];
@@ -176,6 +177,7 @@ export const IServerSettingsDefault: IServerSettings = {
     video: {
         recorded_folders: [],
         exclude_scan_paths: [],
+        recorded_folders_polling_interval: 5.0,
     },
     capture: {
         upload_folders: [],
