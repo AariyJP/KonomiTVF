@@ -24,6 +24,7 @@
 - バージョンは日付ベースの `YYYY.M.D` (例: `2026.10.5`)
   - `client/package.json` と `server/app/constants.py` には `v` なしで記載し、Git タグは `v` 付き (例: `v2026.10.5`) にする
   - バージョン更新コミットのコミットメッセージはタグ名と同じにする
+  - `develop` のバージョンは `0.0.0-develop` に固定する。`-dev` を含むバージョンは開発版として扱われ (`client/src/stores/VersionStore.ts`)、リリースのタグと一致しないためアップデート通知が出ない
 - アップデート確認 (`server/app/routers/VersionRouter.py`) は AariyJP/KonomiTVF のタグを参照する。ナビゲーションやマイページのリンク先も AariyJP/KonomiTVF
 - `client/dist/` は Git 管理外。コミットせず、各環境の `client/` でビルドする
 
