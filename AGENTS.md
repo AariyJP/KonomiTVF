@@ -18,9 +18,9 @@
 
 ### リポジトリとリリース
 
-- リポジトリは [AariyJP/KonomiTVF](https://github.com/AariyJP/KonomiTVF) (Git remote `fork`)。[tsukumijima/KonomiTV](https://github.com/tsukumijima/KonomiTV) (Git remote `origin`) の v0.14.1 から派生している
+- リポジトリは [AariyJP/KonomiTVF](https://github.com/AariyJP/KonomiTVF) (Git remote `origin`)。[tsukumijima/KonomiTV](https://github.com/tsukumijima/KonomiTV) (Git remote `upstream`) の v0.14.1 から派生している
   - `main`: リリースブランチ
-  - `develop`: 開発ブランチ。`origin` の master は `--no-ff` のマージコミットでここに取り込む
+  - `develop`: 開発ブランチ。`upstream` の master は `--no-ff` のマージコミットでここに取り込む
 - バージョンは日付ベースの `YYYY.M.D` (例: `2026.10.5`)
   - `client/package.json` と `server/app/constants.py` には `v` なしで記載し、Git タグは `v` 付き (例: `v2026.10.5`) にする
   - バージョン更新コミットのコミットメッセージはタグ名と同じにする
