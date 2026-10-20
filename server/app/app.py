@@ -27,6 +27,7 @@ from app.routers import (
     CapturesRouter,
     ChannelsRouter,
     DataBroadcastingRouter,
+    DiscordRouter,
     LiveStreamsRouter,
     MaintenanceRouter,
     NiconicoRouter,
@@ -80,6 +81,7 @@ app.include_router(RecordingPresetsRouter.router)
 app.include_router(CapturesRouter.router)
 app.include_router(DataBroadcastingRouter.router)
 app.include_router(NiconicoRouter.router)
+app.include_router(DiscordRouter.router)
 app.include_router(TwitterRouter.router)
 app.include_router(BlueskyRouter.router)
 app.include_router(UsersRouter.router)

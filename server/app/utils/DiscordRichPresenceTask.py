@@ -11,11 +11,13 @@ from app.models.Channel import Channel
 from app.models.User import User
 from app.streams.LiveStream import LiveStream
 from app.utils.DiscordRPCClient import DiscordRPCClient
+from app.utils.DiscordSocialSDKClient import DiscordSocialSDKClient
 
 
 class DiscordRichPresenceTask:
     """
-    視聴中のテレビ番組を、KonomiTV サーバーと同じ PC で起動している Discord の Rich Presence に定期的に反映するタスク
+    視聴中のテレビ番組を、Discord の Rich Presence に定期的に反映するタスク
+    KonomiTV サーバーと同じ PC で起動している Discord への IPC と、Discord Social SDK を使った連携アカウントへの表示の両方に対応する
     """
 
     # アクティビティを更新する間隔 (秒)
@@ -48,6 +50,10 @@ class DiscordRichPresenceTask:
         ## 未設定の場合や再接続した直後は None になる
         self._last_activity: dict[str, Any] | None = None
 
+        # アカウント連携で表示する場合の、KonomiTV のユーザー ID ごとの Discord Social SDK のクライアント
+        ## _updateSocialSDK() で視聴開始時に接続し、表示対象でなくなったときや stop() で接続を閉じる
+        self._social_sdk_clients: dict[int, DiscordSocialSDKClient] = {}
+
 
     async def start(self) -> None:
         """
@@ -72,6 +78,9 @@ class DiscordRichPresenceTask:
 
         # 接続を閉じると、Discord 側でアクティビティが消去される
         await self._client.close()
+        for client in self._social_sdk_clients.values():
+            await client.close()
+        self._social_sdk_clients.clear()
 
 
     async def _run(self) -> None:
@@ -101,14 +110,42 @@ class DiscordRichPresenceTask:
             if live_stream.getStatus().client_count > 0
         ), None)
 
-        # サーバーに同期されたクライアント設定のうち、いずれかのユーザーで discord_rich_presence がオンなら有効とみなす
+        # サーバーに同期されたクライアント設定で discord_rich_presence がオンのユーザーを、表示方法ごとに振り分ける
+        ## IPC: いずれかのユーザーでオンなら、同じ PC で起動している Discord に1つだけ表示する
+        ## AccountLinking: Discord アカウントと連携済みのユーザーごとに、そのアカウントに表示する
         ## 誰も視聴していない場合は設定に関わらず表示するものがないため、DB へのアクセスを省略する
-        is_enabled = live_stream is not None and any(
-            ClientSettings.model_validate(user.client_settings).discord_rich_presence for user in await User.all()
-        )
+        is_ipc_enabled = False
+        linked_users: list[User] = []
+        for user in (await User.all() if live_stream is not None else []):
+            client_settings = ClientSettings.model_validate(user.client_settings)
+            if client_settings.discord_rich_presence is False:
+                continue
+            if client_settings.discord_rich_presence_connection_type == 'AccountLinking':
+                if user.discord_refresh_token is not None:
+                    linked_users.append(user)
+            else:
+                is_ipc_enabled = True
+
+        # 表示するアクティビティを生成する
+        activity = None
+        if live_stream is not None and (is_ipc_enabled is True or len(linked_users) > 0):
+            activity = await self._getActivity(live_stream)
+
+        await self._updateIPC(is_ipc_enabled, activity)
+        await self._updateSocialSDK(linked_users, activity)
+
+
+    async def _updateIPC(self, is_enabled: bool, activity: dict[str, Any] | None) -> None:
+        """
+        同じ PC で起動している Discord に、IPC でアクティビティを設定する
+
+        Args:
+            is_enabled (bool): IPC での表示が有効か (誰も視聴していないか設定で無効なら False)
+            activity (dict[str, Any] | None): 設定するアクティビティ
+        """
 
         # 誰も視聴していないか設定で無効になっている場合、接続中であれば切断してアクティビティを消去する
-        if live_stream is None or is_enabled is False:
+        if is_enabled is False:
             if self._client.is_connected is True:
                 await self._client.close()
             return
@@ -121,9 +158,48 @@ class DiscordRichPresenceTask:
             self._last_activity = None
 
         # 前回送信した内容から変化があったときだけ送信する
-        activity = await self._getActivity(live_stream)
         if activity != self._last_activity and await self._client.setActivity(activity) is True:
             self._last_activity = activity
+
+
+    async def _updateSocialSDK(self, linked_users: list[User], activity: dict[str, Any] | None) -> None:
+        """
+        Discord アカウントと連携済みのユーザーごとに、Discord Social SDK でアクティビティを設定する
+
+        Args:
+            linked_users (list[User]): アクティビティを表示する、Discord アカウントと連携済みのユーザー
+            activity (dict[str, Any] | None): 設定するアクティビティ
+        """
+
+        # 表示対象でなくなったユーザーのクライアントは、接続を閉じてアクティビティを消去する
+        linked_user_ids = {user.id for user in linked_users}
+        for user_id in list(self._social_sdk_clients):
+            if user_id not in linked_user_ids:
+                await self._social_sdk_clients.pop(user_id).close()
+
+        # Discord Social SDK を読み込めなければ、トークンを更新しても表示できないため何もしない
+        if len(linked_users) > 0 and DiscordSocialSDKClient.isAvailable() is False:
+            return
+
+        for user in linked_users:
+            client = self._social_sdk_clients.get(user.id)
+
+            # 未接続なら、アクセストークンを更新してから接続する
+            ## 視聴を始めるたびに接続し直すため、有効期限 (7 日) を気にせず毎回ここで更新すれば足りる
+            if client is None:
+                try:
+                    await user.requestDiscordToken({'grant_type': 'refresh_token', 'refresh_token': user.discord_refresh_token or ''})
+                except Exception as ex:
+                    logging.warning(f'[DiscordRichPresenceTask] Failed to refresh Discord access token. [user_id: {user.id}] ({ex})')
+                    continue
+                client = DiscordSocialSDKClient()
+                if user.discord_access_token is None or await client.connect(user.discord_access_token) is False:
+                    continue
+                self._social_sdk_clients[user.id] = client
+
+            # 接続が完了していれば送信する (完了していなければ次回に持ち越す)
+            if await client.isReady() is True:
+                await client.setActivity(activity)
 
 
     async def _getActivity(self, live_stream: LiveStream) -> dict[str, Any] | None:

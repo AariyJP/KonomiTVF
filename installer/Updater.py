@@ -223,6 +223,16 @@ def Updater(version: str) -> None:
             ])
             return  # 処理中断
 
+        result = RunSubprocess(
+            'KonomiTV のソースコードの取得先を設定しています…',
+            ['git', 'remote', 'set-url', 'origin', 'https://github.com/AariyJP/KonomiTVF.git'],
+            cwd = update_path,
+            error_message = 'KonomiTV のソースコードの取得先の設定中に予期しないエラーが発生しました。',
+            error_log_name = 'Git のエラーログ',
+        )
+        if result is False:
+            return
+
         # リモートの変更内容とタグを取得
         result = RunSubprocess(
             'KonomiTV のソースコードを Git でダウンロードしています…',
@@ -235,13 +245,13 @@ def Updater(version: str) -> None:
             return  # 処理中断
 
         # 新しいバージョンのコードをチェックアウト
-        ## latest の場合は master ブランチを、それ以外は指定されたバージョンのタグをチェックアウト
-        ## git fetch はローカルの master ブランチを更新しないため、latest の場合は -B でローカルの master ブランチを
-        ## リモートの最新 (origin/master) に合わせて作り直してからチェックアウトする
-        ## 単に master をチェックアウトすると、初回インストール時点などの古いローカルの master ブランチのままになってしまう
+        ## latest の場合は develop ブランチを、それ以外は指定されたバージョンのタグをチェックアウト
+        ## git fetch はローカルの develop ブランチを更新しないため、latest の場合は -B でローカルの develop ブランチを
+        ## リモートの最新 (origin/develop) に合わせて作り直してからチェックアウトする
+        ## 単に develop をチェックアウトすると、初回インストール時点などの古いローカルの develop ブランチのままになってしまう
         checkout_args: list[str | Path]
         if version == 'latest':
-            checkout_args = ['git', 'checkout', '--force', '-B', 'master', 'origin/master']
+            checkout_args = ['git', 'checkout', '--force', '-B', 'develop', 'origin/develop']
         else:
             checkout_args = ['git', 'checkout', '--force', f'v{version}']
         result = RunSubprocess(
@@ -292,11 +302,11 @@ def Updater(version: str) -> None:
         progress = CreateDownloadInfiniteProgress()
 
         # GitHub からソースコードをダウンロード
-        ## latest の場合は master ブランチを、それ以外は指定されたバージョンのタグをダウンロード
+        ## latest の場合は develop ブランチを、それ以外は指定されたバージョンのタグをダウンロード
         if version == 'latest':
-            source_code_response = requests.get('https://codeload.github.com/tsukumijima/KonomiTV/zip/refs/heads/master')
+            source_code_response = requests.get('https://codeload.github.com/AariyJP/KonomiTVF/zip/refs/heads/develop')
         else:
-            source_code_response = requests.get(f'https://codeload.github.com/tsukumijima/KonomiTV/zip/refs/tags/v{version}')
+            source_code_response = requests.get(f'https://codeload.github.com/AariyJP/KonomiTVF/zip/refs/tags/v{version}')
         task_id = progress.add_task('', total=None)
 
         # ダウンロードしたデータを随時一時ファイルに書き込む
@@ -312,11 +322,11 @@ def Updater(version: str) -> None:
         # ソースコードを解凍して展開
         shutil.unpack_archive(source_code_file.name, update_path.parent, format='zip')
         if version == 'latest':
-            shutil.copytree(update_path.parent / 'KonomiTV-master/', update_path, dirs_exist_ok=True)
-            shutil.rmtree(update_path.parent / 'KonomiTV-master/', ignore_errors=True)
+            shutil.copytree(update_path.parent / 'KonomiTVF-develop/', update_path, dirs_exist_ok=True)
+            shutil.rmtree(update_path.parent / 'KonomiTVF-develop/', ignore_errors=True)
         else:
-            shutil.copytree(update_path.parent / f'KonomiTV-{version}/', update_path, dirs_exist_ok=True)
-            shutil.rmtree(update_path.parent / f'KonomiTV-{version}/', ignore_errors=True)
+            shutil.copytree(update_path.parent / f'KonomiTVF-{version}/', update_path, dirs_exist_ok=True)
+            shutil.rmtree(update_path.parent / f'KonomiTVF-{version}/', ignore_errors=True)
         Path(source_code_file.name).unlink()
 
     # ***** サーバー設定ファイル (config.yaml) の更新 *****
@@ -361,9 +371,9 @@ def Updater(version: str) -> None:
 
         # GitHub からサードパーティーライブラリをダウンロード
         if version == 'latest':
-            thirdparty_base_url = 'https://nightly.link/tsukumijima/KonomiTV/workflows/build_thirdparty.yaml/master/'
+            thirdparty_base_url = 'https://nightly.link/AariyJP/KonomiTVF/workflows/build_thirdparty.yaml/develop/'
         else:
-            thirdparty_base_url = f'https://github.com/tsukumijima/KonomiTV/releases/download/v{version}/'
+            thirdparty_base_url = f'https://github.com/AariyJP/KonomiTVF/releases/download/v{version}/'
         thirdparty_compressed_file_name = 'thirdparty-windows.7z'
         if platform_type == 'Linux' and is_arm_device is False:
             thirdparty_compressed_file_name = 'thirdparty-linux.tar.xz'
@@ -437,6 +447,30 @@ def Updater(version: str) -> None:
 
     # Linux-Docker: Docker イメージを再ビルド
     elif platform_type == 'Linux-Docker':
+
+        # AMD GPU 向けの /dev/kfd が存在する場合、ROCm の OpenCL を Docker コンテナ内で使えるように docker-compose.yaml へマウント設定を追加
+        ## VCEEncC が AMD AMF でエンコードする際の OpenCL フィルターは ROCm でしか動作せず、ROCm の動作には /dev/kfd が必要
+        ## 以前のバージョンのインストーラーが生成した docker-compose.yaml には /dev/kfd の記述自体がないため、/dev/dri/ のマウント設定の直後に追加する
+        ## /dev/dri/ のマウント設定をユーザーがコメントアウトしている場合は、ユーザーの設定を尊重して何もしない
+        if Path('/dev/kfd').exists() is True:
+            with open(update_path / 'docker-compose.yaml', encoding='utf-8') as file:
+                text = file.read()
+            dri_device_line = '      - \'/dev/dri/:/dev/dri/\''
+            kfd_device_line = '      - \'/dev/kfd:/dev/kfd\''
+            commented_kfd_device_line = '      # - \'/dev/kfd:/dev/kfd\''
+            new_text = text
+            # /dev/dri/ のマウント設定が有効な場合のみ処理する
+            if dri_device_line in text:
+                # 現在の docker-compose.example.yaml から生成した docker-compose.yaml で、/dev/kfd の記述がコメントアウトされている場合
+                if commented_kfd_device_line in text:
+                    new_text = text.replace(commented_kfd_device_line, kfd_device_line)
+                # 以前のバージョンから生成した docker-compose.yaml で、/dev/kfd の記述自体がない場合
+                elif kfd_device_line not in text:
+                    new_text = text.replace(dri_device_line, f'{dri_device_line}\n{kfd_device_line}')
+            # 内容が変わった場合のみ docker-compose.yaml を書き換える
+            if new_text != text:
+                with open(update_path / 'docker-compose.yaml', mode='w', encoding='utf-8') as file:
+                    file.write(new_text)
 
         # docker compose build --no-cache --pull で Docker イメージをビルド
         ## 万が一以前ビルドしたキャッシュが残っていたときに備え、キャッシュを使わずにビルドさせる

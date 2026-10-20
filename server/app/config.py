@@ -15,6 +15,7 @@ import ruamel.yaml.scalarstring
 from pydantic import (
     BaseModel,
     DirectoryPath,
+    Field,
     FilePath,
     PositiveFloat,
     PositiveInt,
@@ -89,6 +90,7 @@ class ClientSettings(BaseModel):
     video_panel_active_tab: Literal['RecordedProgram', 'Series', 'Comment', 'Twitter'] = 'RecordedProgram'
     video_watched_history_max_count: Annotated[int, PositiveInt] = 50
     discord_rich_presence: bool = False
+    discord_rich_presence_connection_type: Literal['IPC', 'AccountLinking'] = 'IPC'
     tv_streaming_quality: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '1080p'
     tv_streaming_quality_cellular: Literal['original', '1080p-60fps', '1080p', '810p', '720p', '540p', '480p', '360p', '240p'] = '480p'
     tv_data_saver_mode: bool = False
@@ -117,8 +119,8 @@ class ClientSettings(BaseModel):
     capture_copy_to_clipboard: bool = False
     # sync_settings: 同期無効
     prefer_posting_to_nicolive: bool = True
-    comment_speed_rate: Annotated[float, PositiveFloat] = 1.0
-    comment_font_size: Annotated[int, PositiveInt] = 34
+    # comment_speed_rate: 同期無効
+    # comment_font_size: 同期無効
     close_comment_form_after_sending: bool = True
     mute_vulgar_comments: bool = True
     mute_abusive_discriminatory_prejudiced_comments: bool = True
@@ -354,6 +356,7 @@ class _ServerSettingsTV(BaseModel):
 class _ServerSettingsVideo(BaseModel):
     recorded_folders: list[DirectoryPath] = []
     exclude_scan_paths: list[str] = []
+    recorded_folders_polling_interval: Annotated[float, Field(ge=0.1, strict=True, allow_inf_nan=False)] = 5.0
 
 class _ServerSettingsCapture(BaseModel):
     upload_folders: list[DirectoryPath] = []

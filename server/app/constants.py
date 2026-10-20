@@ -15,7 +15,7 @@ from pydantic import BaseModel, PositiveInt
 
 
 # バージョン
-VERSION = '2026.10.10'
+VERSION = '2026.10.20'
 
 # 日本標準時 (JST, UTC+9) の ZoneInfo
 ## KonomiTV は日本向けのアプリケーションのため、日時は JST で統一して扱う
@@ -23,6 +23,7 @@ JST = ZoneInfo('Asia/Tokyo')
 
 # Discord Rich Presence の送信元となる Discord アプリケーションの ID
 ## Discord 上では「Watching (このアプリケーションの名前)」と表示され、その横にアプリケーションのアイコンが表示される
+## アカウント連携による Discord Rich Presence では、このアプリケーションを PKCE を使う Public Client として OAuth 認証に使う
 DISCORD_CLIENT_ID = '835110950260572160'
 
 # ベースディレクトリ
@@ -86,6 +87,17 @@ LIBRARY_PATH = {
     'psisiarc': str(LIBRARY_DIR / 'psisiarc/psisiarc') + LIBRARY_EXTENSION,
     'psisimux': str(LIBRARY_DIR / 'psisimux/psisimux') + LIBRARY_EXTENSION,
 }
+
+# Discord Social SDK の共有ライブラリのパス
+## Discord Social SDK は Discord Developer Portal からのみ配布されていて、本家の thirdparty には同梱されていない
+## Discord Developer Portal からダウンロードした SDK の zip から、各 OS 向けの共有ライブラリだけを thirdparty/DiscordSocialSDK/ に直接置いて使う
+## アカウント連携による Discord Rich Presence でのみ使われ、存在しない場合はアカウント連携による表示が無効になる
+if sys.platform == 'win32':
+    DISCORD_SOCIAL_SDK_PATH = LIBRARY_DIR / 'DiscordSocialSDK/discord_partner_sdk.dll'
+elif sys.platform == 'darwin':
+    DISCORD_SOCIAL_SDK_PATH = LIBRARY_DIR / 'DiscordSocialSDK/libdiscord_partner_sdk.dylib'
+else:
+    DISCORD_SOCIAL_SDK_PATH = LIBRARY_DIR / 'DiscordSocialSDK/libdiscord_partner_sdk.so'
 
 # データベース (Tortoise ORM) の設定
 __model_list = [name for _, name, _ in pkgutil.iter_modules(path=['app/models'])]

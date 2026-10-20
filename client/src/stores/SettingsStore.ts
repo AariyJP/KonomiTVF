@@ -86,6 +86,7 @@ export interface ILocalClientSettings extends IClientSettings {
     video_panel_active_tab: 'RecordedProgram' | 'Series' | 'Comment' | 'Twitter';
     video_watched_history_max_count: number;
     discord_rich_presence: boolean;
+    discord_rich_presence_connection_type: 'IPC' | 'AccountLinking';
     tv_streaming_quality: LiveStreamingQuality;
     tv_streaming_quality_cellular: LiveStreamingQuality;
     tv_data_saver_mode: boolean;
@@ -245,6 +246,10 @@ export const ILocalClientSettingsDefault: ILocalClientSettings = {
     // KonomiTV サーバーと同じ PC で起動している Discord の Rich Presence に表示される
     // サーバー側で参照するため、設定のデバイス間同期がオンのときのみ有効
     discord_rich_presence: false,
+    // Discord に視聴中の番組を表示する方法 (Default: パイプで接続する)
+    // IPC: KonomiTV サーバーと同じ PC で起動している Discord に名前付きパイプ (IPC) で接続して表示する (アカウント連携不要)
+    // AccountLinking: KonomiTV アカウントに連携した Discord アカウントに、Discord Social SDK で表示する
+    discord_rich_presence_connection_type: 'IPC',
 
     // ***** 設定 → 画質 *****
 
@@ -405,6 +410,7 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'video_panel_active_tab',
     'video_watched_history_max_count',
     'discord_rich_presence',
+    'discord_rich_presence_connection_type',
     'tv_streaming_quality',
     'tv_streaming_quality_cellular',
     'tv_data_saver_mode',
@@ -433,8 +439,8 @@ export const SYNCABLE_SETTINGS_KEYS: (keyof IClientSettings)[] = [
     'capture_copy_to_clipboard',
     // sync_settings: 同期無効
     'prefer_posting_to_nicolive',
-    'comment_speed_rate',
-    'comment_font_size',
+    // comment_speed_rate: 同期無効
+    // comment_font_size: 同期無効
     'close_comment_form_after_sending',
     'mute_vulgar_comments',
     'mute_abusive_discriminatory_prejudiced_comments',

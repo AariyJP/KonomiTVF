@@ -7,8 +7,8 @@ on:
     inputs:
       version:
         type: string
-        description: 'リリースするバージョン (例: 0.6.0, v はつけない)'
-        required: true
+        description: 'リリースするバージョン (空欄なら実行時の JST の日付で YYYY.M.D、v はつけない)'
+        required: false
         default: ''
 
 # ジョブの定義
@@ -17,6 +17,11 @@ jobs:
   # リリースコミットの作成
   create_release_commit:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      sha: ${{ steps.create_release_commit.outputs.sha }}
     steps:
 
       # KonomiTV のソースコードをチェックアウト
@@ -24,7 +29,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GIT_PUSH_TOKEN }}
 
       # Node.js 20 環境をセットアップ
       - name: Setup Node.js 20
@@ -41,21 +45,47 @@ jobs:
         with:
           version: '0.12.18'
 
+      - name: Get Version
+        id: get_version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          VERSION="${INPUT_VERSION#v}"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(TZ=Asia/Tokyo date '+%Y.%-m.%-d')"
+          fi
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" > /dev/null; then
+            echo "::error::Tag v${VERSION} already exists."
+            exit 1
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       # リリースコミットを作成
       - name: Create Release Commit
+        id: create_release_commit
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git switch master
+          git switch main
+          git read-tree --reset -u origin/develop
 
           # ソースコードやドキュメント内のバージョンを更新
-          sed -i -e 's|"version": ".*",|"version": "${{ github.event.inputs.version }}",|' client/package.json
-          sed -i -e 's|^version = ".*"|version = "${{ github.event.inputs.version }}"|' installer/pyproject.toml
-          sed -i -e "s|TARGET_VERSION = '.*'|TARGET_VERSION = '${{ github.event.inputs.version }}'|" installer/KonomiTV-Installer.py
-          sed -i -e 's|^version = ".*"|version = "${{ github.event.inputs.version }}"|' server/pyproject.toml
-          sed -i -e "s|VERSION = '.*'|VERSION = '${{ github.event.inputs.version }}'|" server/app/constants.py
-          sed -i -e 's|download/v.*/thirdparty-linux\.tar\.xz|download/v${{ github.event.inputs.version }}/thirdparty-linux\.tar\.xz|' Dockerfile
-          sed -i -e 's|download/v.*/KonomiTV-Installer\.elf|download/v${{ github.event.inputs.version }}/KonomiTV-Installer\.elf|' Readme.md
+          sed -i -e "s|\"version\": \".*\",|\"version\": \"${VERSION}\",|" client/package.json
+          sed -i -e "s|^version = \".*\"|version = \"${VERSION}\"|" installer/pyproject.toml
+          sed -i -e "s|TARGET_VERSION = '.*'|TARGET_VERSION = '${VERSION}'|" installer/KonomiTV-Installer.py
+          sed -i -e "s|^version = \".*\"|version = \"${VERSION}\"|" server/pyproject.toml
+          sed -i -e "s|VERSION = '.*'|VERSION = '${VERSION}'|" server/app/constants.py
+          sed -i -e "s|https://github.com/.*/releases/download/v.*/KonomiTV-Installer\.elf|https://github.com/AariyJP/KonomiTVF/releases/download/v${VERSION}/KonomiTV-Installer.elf|" Readme.md
+          sed -i \
+            -e "s|^# RUN aria2c -x10 https://github.com/.*/releases/download/v.*/thirdparty-linux\.tar\.xz$|RUN aria2c -x10 https://github.com/AariyJP/KonomiTVF/releases/download/v${VERSION}/thirdparty-linux.tar.xz|" \
+            -e "s|^RUN aria2c -x10 https://github.com/.*/releases/download/v.*/thirdparty-linux\.tar\.xz$|RUN aria2c -x10 https://github.com/AariyJP/KonomiTVF/releases/download/v${VERSION}/thirdparty-linux.tar.xz|" \
+            -e "s|^# RUN tar xvf thirdparty-linux\.tar\.xz$|RUN tar xvf thirdparty-linux.tar.xz|" \
+            -e "s|^RUN aria2c -x10 https://nightly\.link/|# RUN aria2c -x10 https://nightly.link/|" \
+            -e "s|^RUN unzip thirdparty-linux\.tar\.xz\.zip|# RUN unzip thirdparty-linux.tar.xz.zip|" \
+            Dockerfile
+          grep -q "^RUN aria2c -x10 https://github.com/AariyJP/KonomiTVF/releases/download/v${VERSION}/thirdparty-linux\.tar\.xz$" Dockerfile
 
           # uv.lock に記録されているプロジェクトのバージョンを更新
           ## 依存パッケージのバージョンは変更せず、pyproject.toml のバージョンの変更だけを反映する
@@ -69,14 +99,19 @@ jobs:
           cd ../
 
           # リリースコミットを作成
-          git add .
-          git commit -m 'Release: version ${{ github.event.inputs.version }}'
-          git push -u origin master
+          git add -A
+          git add -f client/dist/
+          git commit -m "v${VERSION}"
+          git push origin main
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      # release ブランチを現在の master ブランチの最新コミット (リリースコミット) に更新する
-      ## release ブランチはリリースしたときのみ更新される
-      - name: Update Release Branch
-        run: |
-          git switch release
-          git merge master
-          git push -u origin release
+  publish_release:
+    needs: create_release_commit
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/publish_release.yaml
+    with:
+      version: ${{ needs.create_release_commit.outputs.version }}
+      ref: ${{ needs.create_release_commit.outputs.sha }}
+    secrets: inherit

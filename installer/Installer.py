@@ -195,7 +195,7 @@ def Installer(version: str) -> None:
     table_03.add_row('EDCB は、220122 以降のバージョンの xtne6f / tkntrec 版の EDCB にのみ対応しています。')
     table_03.add_row('「人柱版10.66」などの古いバージョンをお使いの場合は、EDCB のアップグレードが必要です。')
     table_03.add_row('KonomiTV と連携するには、さらに EDCB に事前の設定が必要になります。')
-    table_03.add_row('詳しくは [bright_blue]https://github.com/tsukumijima/KonomiTV[/bright_blue] をご覧ください。')
+    table_03.add_row('詳しくは [bright_blue]https://github.com/AariyJP/KonomiTVF[/bright_blue] をご覧ください。')
     table_03.add_row(CreateRule())
     table_03.add_row('Mirakurun は、3.9.0 以降のバージョンを推奨します。')
     table_03.add_row('3.8.0 以下のバージョンでも動作しますが、諸問題で推奨しません。')
@@ -528,11 +528,11 @@ def Installer(version: str) -> None:
     if is_git_installed is True:
 
         # git clone でソースコードをダウンロード
-        ## latest の場合は master ブランチを、それ以外は指定されたバージョンのタグをチェックアウト
-        revision = 'master' if version == 'latest' else f'v{version}'
+        ## latest の場合は develop ブランチを、それ以外は指定されたバージョンのタグをチェックアウト
+        revision = 'develop' if version == 'latest' else f'v{version}'
         result = RunSubprocess(
             'KonomiTV のソースコードを Git でダウンロードしています…',
-            ['git', 'clone', '-b', revision, 'https://github.com/tsukumijima/KonomiTV.git', install_path.name],
+            ['git', 'clone', '-b', revision, 'https://github.com/AariyJP/KonomiTVF.git', install_path.name],
             cwd = install_path.parent,
             error_message = 'KonomiTV のソースコードのダウンロード中に予期しないエラーが発生しました。',
             error_log_name = 'Git のエラーログ',
@@ -549,11 +549,11 @@ def Installer(version: str) -> None:
         progress = CreateDownloadInfiniteProgress()
 
         # GitHub からソースコードをダウンロード
-        ## latest の場合は master ブランチを、それ以外は指定されたバージョンのタグをダウンロード
+        ## latest の場合は develop ブランチを、それ以外は指定されたバージョンのタグをダウンロード
         if version == 'latest':
-            source_code_response = requests.get('https://codeload.github.com/tsukumijima/KonomiTV/zip/refs/heads/master')
+            source_code_response = requests.get('https://codeload.github.com/AariyJP/KonomiTVF/zip/refs/heads/develop')
         else:
-            source_code_response = requests.get(f'https://codeload.github.com/tsukumijima/KonomiTV/zip/refs/tags/v{version}')
+            source_code_response = requests.get(f'https://codeload.github.com/AariyJP/KonomiTVF/zip/refs/tags/v{version}')
         task_id = progress.add_task('', total=None)
 
         # ダウンロードしたデータを随時一時ファイルに書き込む
@@ -569,9 +569,9 @@ def Installer(version: str) -> None:
         # ソースコードを解凍して展開
         shutil.unpack_archive(source_code_file.name, install_path.parent, format='zip')
         if version == 'latest':
-            shutil.move(install_path.parent / 'KonomiTV-master/', install_path)
+            shutil.move(install_path.parent / 'KonomiTVF-develop/', install_path)
         else:
-            shutil.move(install_path.parent / f'KonomiTV-{version}/', install_path)
+            shutil.move(install_path.parent / f'KonomiTVF-{version}/', install_path)
         Path(source_code_file.name).unlink()
 
     # ***** リッスンポートの重複チェック *****
@@ -646,9 +646,9 @@ def Installer(version: str) -> None:
 
         # GitHub からサードパーティーライブラリをダウンロード
         if version == 'latest':
-            thirdparty_base_url = 'https://nightly.link/tsukumijima/KonomiTV/workflows/build_thirdparty.yaml/master/'
+            thirdparty_base_url = 'https://nightly.link/AariyJP/KonomiTVF/workflows/build_thirdparty.yaml/develop/'
         else:
-            thirdparty_base_url = f'https://github.com/tsukumijima/KonomiTV/releases/download/v{version}/'
+            thirdparty_base_url = f'https://github.com/AariyJP/KonomiTVF/releases/download/v{version}/'
         thirdparty_compressed_file_name = 'thirdparty-windows.7z'
         if platform_type == 'Linux' and is_arm_device is False:
             thirdparty_compressed_file_name = 'thirdparty-linux.tar.xz'
@@ -750,6 +750,16 @@ def Installer(version: str) -> None:
                     '    # devices:\n'
                     '    #   - \'/dev/dri/:/dev/dri/\''
                 )
+                text = text.replace(old_text, new_text)
+
+            # AMD GPU 向けの /dev/kfd が存在する場合、ROCm の OpenCL を Docker コンテナ内で使えるように docker-compose.yaml の当該記述をコメントアウト解除
+            ## VCEEncC が AMD AMF でエンコードする際の OpenCL フィルターは ROCm でしか動作せず、ROCm の動作には /dev/kfd が必要
+            ## /dev/kfd が存在しない環境でコメントアウトを解除するとコンテナが起動できないので、存在する場合のみ有効にする
+            elif Path('/dev/kfd').exists() is True:
+                # デフォルト (置換元) の config.yaml の記述
+                old_text = '      # - \'/dev/kfd:/dev/kfd\''
+                # 置換後の config.yaml の記述
+                new_text = '      - \'/dev/kfd:/dev/kfd\''
                 text = text.replace(old_text, new_text)
 
             # NVEncC が利用できそうな場合、NVIDIA GPU が Docker コンテナ内で使えるように docker-compose.yaml の当該記述をコメントアウト
@@ -941,30 +951,47 @@ def Installer(version: str) -> None:
                 text = True,  # 出力をテキストとして取得する
             )
 
-            # VCEEncC が利用できない結果になった場合はドライバーがインストールされていない or 古い可能性が高いので、
-            # 適宜ドライバーをインストール/アップデートするように催促する
-            ## VCEEncC は AMDGPU-PRO Driver さえインストールされていれば動作する
+            # VCEEncC が利用できない結果になった場合は、VA-API ドライバーなどのユーザーモードドライバーがインストールされていないか、
+            # AMD GPU がカーネルドライバーで認識されていない可能性が高いので、適宜インストール方法を案内する
+            ## VCEEncC は、AMD AMF がインストールされていれば AMF を、なければ Mesa の VA-API ドライバーを自動的に選んで使う
+            ## カーネルドライバーは Linux に標準で含まれている amdgpu を使うため、AMDGPU-PRO Driver のインストールは必須ではない
             if result.returncode != 0:
-                ShowPanel([
-                    '[yellow]注意: この PC では VCEEncC が利用できない状態です。[/yellow]',
-                    'AMD VCE の利用に必要な AMDGPU-PRO Driver がインストールされていないか、',
-                    'AMDGPU-PRO Driver のバージョンが古い可能性があります。',
-                    'AMDGPU-PRO Driver をインストール/最新バージョンに更新してください。',
-                ])
-                ShowPanel([
-                    'AMDGPU-PRO Driver のインストーラーは以下のコマンドでダウンロードできます。',
-                    'Ubuntu 24.04 LTS: [cyan]curl -LO https://repo.radeon.com/amdgpu-install/6.4.4/ubuntu/noble/amdgpu-install_6.4.60404-1_all.deb[/cyan]',
-                    'Ubuntu 22.04 LTS: [cyan]curl -LO https://repo.radeon.com/amdgpu-install/6.4.4/ubuntu/jammy/amdgpu-install_6.4.60404-1_all.deb[/cyan]',
-                ], padding=(0, 2, 0, 2))
-                ShowPanel([
-                    'AMDGPU-PRO Driver は以下のコマンドでインストール/アップデートできます。',
-                    '事前に AMDGPU-PRO Driver のインストーラーをダウンロードしてから実行してください。',
-                    'インストール/アップデート完了後は、システムの再起動が必要です。',
-                    '[cyan]sudo apt install -y ./amdgpu-install_6.4.60404-1_all.deb && sudo apt update && sudo amdgpu-install -y --accept-eula --usecase=graphics,amf,opencl --opencl=rocr --vulkan=amdvlk --no-32[/cyan]',
-                ], padding=(0, 2, 0, 2))
-                ShowPanel([
-                    'VCEEncC のログ:\n' + result.stdout.strip(),
-                ], padding=(0, 2, 0, 2))
+
+                # Linux のみ
+                if platform_type == 'Linux':
+                    ShowPanel([
+                        '[yellow]注意: この PC では VCEEncC が利用できない状態です。[/yellow]',
+                        'VCEEncC の利用に必要な VA-API ドライバーがインストールされていないか、',
+                        'AMD GPU が Linux 標準の amdgpu ドライバーで認識されていない可能性があります。',
+                    ])
+                    ShowPanel([
+                        'VA-API ドライバーと、OpenCL フィルターに使う Mesa の OpenCL (Rusticl) は以下のコマンドでインストールできます。',
+                        'インストール完了後は、システムの再起動が必要です。',
+                        'Ubuntu 24.04 LTS 以降:',
+                        '[cyan]sudo apt update && sudo apt install -y mesa-va-drivers mesa-opencl-icd vainfo clinfo[/cyan]',
+                        'Ubuntu 22.04 LTS の Mesa には Rusticl が含まれていないため、Readme.md に記載の Ubuntu 22.04 LTS 向けの手順を参照してください。',
+                    ], padding=(0, 2, 0, 2))
+                    ShowPanel([
+                        'RDNA 世代以降の AMD GPU では、AMD AMF を追加でインストールすると、VA-API よりも詳細な設定でエンコードできます。',
+                        'AMD AMF のインストール手順は Readme.md を参照してください。',
+                    ], padding=(0, 2, 0, 2))
+                    ShowPanel([
+                        'VCEEncC のログ:\n' + result.stdout.strip(),
+                    ], padding=(0, 2, 0, 2))
+
+                # Linux-Docker のみ
+                ## Linux-Docker では Docker イメージの中に AMF・VA-API のユーザーモードドライバーが含まれているため、
+                ## それでも動作しない場合は、ホスト側で AMD GPU が認識されていない可能性が高い
+                elif platform_type == 'Linux-Docker':
+                    ShowPanel([
+                        '[yellow]注意: この PC では VCEEncC が利用できない状態です。[/yellow]',
+                        'VCEEncC の動作に必要なライブラリは Docker イメージに含まれています。',
+                        'ホスト側で AMD GPU が Linux 標準の amdgpu ドライバーで認識されていない可能性があります。',
+                        '/dev/dri/ 以下に renderD128 などのデバイスファイルが存在するか確認してください。',
+                    ])
+                    ShowPanel([
+                        'VCEEncC のログ:\n' + result.stdout.strip(),
+                    ], padding=(0, 2, 0, 2))
 
         # エンコーダーに rkmppenc が選択されているとき
         elif encoder == 'rkmppenc':
