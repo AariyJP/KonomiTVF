@@ -6,11 +6,16 @@ name: Build Installer
 on:
   push:
     branches:
-      - master
+      - develop
     paths:
       - 'installer/**'
       - '.github/workflows/build_installer.yaml'
   workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ''
   workflow_dispatch:
 
 env:
@@ -33,6 +38,8 @@ jobs:
       # KonomiTV のソースコードをチェックアウト
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       # uv をセットアップ
       - name: Setup uv
@@ -126,6 +133,8 @@ jobs:
       # KonomiTV のソースコードをチェックアウト
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       # インストーラーを PyInstaller でビルド
       # arm64 ビルドではリリースでの区別のため、ファイル名を KonomiTV-Installer-ARM.elf に変更する
