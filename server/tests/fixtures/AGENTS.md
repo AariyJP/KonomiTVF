@@ -32,6 +32,7 @@ uv run python -m misc.FixtureTSFileConverter <元の録画ファイル> tests/fi
 - 用途:
   - 地デジの番組情報・映像/音声情報など SDT / EIT の解析処理のテスト
   - 録画フォルダのスキャンからサムネイルの生成・録画削除までの E2E テスト
+  - 偽の Mirakurun から放送波として送信し、ライブ視聴のエンコードから配信までを通す E2E テスト
 
 ### bs-aac-misaligned-pes.ts
 
@@ -50,6 +51,27 @@ uv run python -m misc.FixtureTSFileConverter <元の録画ファイル> tests/fi
   - ファイル全体が前の番組 (tvkお買物情報) の時間に入るので、TSInfoAnalyzer が番組情報を読む位置 (ファイルの 20% の位置) では、前の番組が現在の番組として流れている
 - 用途:
   - 番組情報を読む位置が録画開始マージンに入る録画でも、録画開始時刻から1分以内に始まる次の番組を録画対象として選ぶことを確認する回帰テスト
+
+### terrestrial-bdav-partial-ts.m2ts
+
+- 元データ: OBS大分放送 / 2011/02/12 09:25〜11:25 (120分) / 1440x1080 (60i)
+  - 東芝 REGZA で DR 録画して BD に BDAV 形式で記録した録画 (`BDAV/STREAM/00002.m2ts`)
+  - 生成コマンド: `--start 897279744 --length 6200064`
+  - 番組の途中 (09:32:53 から) の約7秒を、映像を差し替えずに切り出したもの (tsreplace は 192 バイトのパケットの TS を受け付けない)
+  - 188 バイトの TS パケットの前に4バイトの TP_extra_header が付いた 192 バイトのパケットで構成され、PSI/SI は PAT・PMT・SIT だけを含む (SDT・EIT・TOT・NIT は含まない)
+  - SIT は番組詳細 (拡張形式イベント記述子) を含み、1つのセクションが数秒おきの3パケットに分かれて届くため、1つの SIT の3パケットが 2.75MB の範囲に収まる位置を選び、すべてが入るように切り出している
+  - SIT の先頭のパケット (切り出し後の 2200128 バイト目) は、TSInfoAnalyzer が番組情報を読む位置 (ファイルの 20% の位置) と、PAT を探すときに ariblib がまとめて読み進める最初の 10000 パケット (1920000 バイト) より後ろに置いている
+- 用途:
+  - BD に記録された録画で、SIT からチャンネル情報・番組情報 (番組詳細を含む)・録画開始時刻を解析し、映像・音声の情報を 192 バイトのパケットのまま解析できることを確認するテスト
+
+### terrestrial-psc-sidecar.mp4 / terrestrial-psc-sidecar.psc
+
+- 元データ: `terrestrial-tsreplace-h264.ts` (NHK総合1・東京 / 2019/08/09)
+  - `terrestrial-psc-sidecar.mp4` は、映像と音声を再エンコードせずに MP4 にコピーしたもの (`ffmpeg -i terrestrial-tsreplace-h264.ts -map 0:v:0 -map 0:a:0 -c copy -movflags +faststart terrestrial-psc-sidecar.mp4`)
+  - `terrestrial-psc-sidecar.psc` は、同じ TS から psisiarc で作成した PSI/SI 書庫 (`psisiarc -r arib-data terrestrial-tsreplace-h264.ts terrestrial-psc-sidecar.psc`)
+  - TS を MP4 にエンコードし、元の TS から作成した書庫を録画の横に置く、実際の録画環境と同じ構成にしている
+- 用途:
+  - MP4 の録画で、PSI/SI 書庫から番組情報・チャンネル情報・録画開始/終了時刻を解析できることを、元の TS の解析結果と比べて確認するテスト
 
 ## captures/
 
@@ -75,11 +97,11 @@ uv run python -m misc.FixtureProgramsCapturer tests/fixtures/programs --service 
 - 元データ: 開発機の Mirakurun 3.9.0-rc.4 と EDCB / 2026/10/29 09:47:15 に取得 / 取得時刻から24時間以内に開始する番組
   - チャンネル: NHK総合1・東京 (32736-1024)・NHK総合2・東京 (32736-1025)・NHK BS (4-101)・J:COM BS (4-260)
   - テストは取得時刻を現在時刻として番組情報を更新する (更新処理は12時間以上前に終了した番組を除外するため)
-- `mirakurun-programs.json`: Mirakurun の `/api/programs` の応答から、4つのチャンネルの番組を応答の順序を保ったまま抽出したもの
+- `mirakurun-programs.json`: Mirakurun の `/api/programs` のレスポンスから、4つのチャンネルの番組をレスポンスの順序を保ったまま抽出したもの
   - NHK総合1・東京の 2026/10/28 23:50 からの「ニュース」は、終了時刻未定 (`duration` が 1) の番組
   - NHK総合2・東京の番組は、番組名のない番組と、NHK総合1・東京と番組を共有するサブチャンネルの番組 (`relatedItems` の `shared`) だけ
   - NHK BS には、デュアルモノラルの番組とイベントリレーの番組が含まれる
-- `edcb-programs.bin`: EDCB (EpgTimerSrv) の番組情報一覧の取得 (CtrlCmd 1029) の応答の本体を、KonomiTV の CtrlCmdUtil が受け取るバイト列のまま保存したもの
+- `edcb-programs.bin`: EDCB (EpgTimerSrv) の番組情報一覧の取得 (CtrlCmd 1029) のレスポンス本体を、KonomiTV の CtrlCmdUtil が受け取るバイト列のまま保存したもの
   - テストでは偽の EDCB (`tests/MockEDCB.py`) が、リクエストの内容にかかわらずこのバイト列を返す
 - 用途:
   - Mirakurun と EDCB から番組情報を更新したときに保存される内容 (番組名・番組詳細・ジャンル・映像と音声の情報・メインの番組の判定) を、スナップショットで固定するテスト

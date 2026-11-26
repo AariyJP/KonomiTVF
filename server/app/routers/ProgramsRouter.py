@@ -13,12 +13,14 @@ from app import logging, schemas
 from app.config import Config
 from app.constants import JST
 from app.models.Channel import Channel
+from app.models.Program import Program
 from app.routers.ReservationConditionsRouter import EncodeEDCBSearchKeyInfo
 from app.routers.ReservationsRouter import GetCtrlCmdUtil
 from app.utils import NormalizeToJSTDatetime, ParseDatetimeStringToJST
 from app.utils.edcb import EventInfo, ReserveDataRequired, SearchKeyInfo
 from app.utils.edcb.CtrlCmdUtil import CtrlCmdUtil
 from app.utils.edcb.EDCBUtil import EDCBUtil
+from app.utils.TorneClient import TorneClient
 from app.utils.TSInformation import TSInformation
 
 
@@ -141,13 +143,23 @@ def DecodeEDCBEventInfo(event_info: EventInfo) -> schemas.Program:
             ## 見出しのみ ariblib 側で意図的に重複防止のためのタブ文字付加が行われる場合があるため、
             ## strip() では明示的に半角スペースと改行のみを指定している
             head_hankaku = TSInformation.formatString(head).replace('◇', '').strip(' \r\n')  # ◇ を取り除く
+            text_hankaku = TSInformation.formatString(text).strip()
+            ## 2つ目以降の項目で見出しが空 (空白と重複防止のタブ文字だけ) の場合、直前の項目の本文の続きとしてつなげる
+            ## WOWOW などは長い本文を、見出しが空白だけの別の項目に分けて送出するため、
+            ## 「番組内容」として扱うと本来の番組内容を上書きしてしまう
+            ## 分割位置には改行が含まれないため、続きの本文が「【」で始まる見出しのときだけ改行を挟んでつなげる
+            ## (WOWOW では本文の中の「【」は常に行頭にあり、それ以外の分割位置は語や列挙の途中になっている)
+            if head_hankaku.strip() == '' and len(detail) > 0:
+                last_head = list(detail.keys())[-1]
+                separator = '\n' if text_hankaku.startswith('【') else ''
+                detail[last_head] += separator + text_hankaku
+                continue
+            ## 先頭の項目の見出しが空の場合、固定で「番組内容」としておく
+            if head_hankaku.strip() == '':
+                head_hankaku = '番組内容'
             ## ないとは思うが、万が一この状態で見出しが衝突しうる場合は、見出しの後ろにタブ文字を付加する
             while head_hankaku in detail.keys():
                 head_hankaku += '\t'
-            ## 見出しが空の場合、固定で「番組内容」としておく
-            if head_hankaku == '':
-                head_hankaku = '番組内容'
-            text_hankaku = TSInformation.formatString(text).strip()
             detail[head_hankaku] = text_hankaku
 
             # 番組概要が空の場合、番組詳細の最初の本文を概要として使う
@@ -746,4 +758,94 @@ async def TimeTableAPI(
     return schemas.TimeTable(
         channels=validated_channels,
         date_range=schemas.TimeTableDateRange(earliest=earliest, latest=latest),
+    )
+
+
+@router.get(
+    '/toru-counts',
+    summary = 'トル数取得 API',
+    response_description = '番組 ID をキーにした、番組ごとのトル数の辞書。',
+    response_model = dict[str, schemas.ToruCount],
+)
+async def ToruCountsAPI():
+    """
+    番組ごとのトル数 (torne の利用者がその番組を録画予約している数) を取得する。<br>
+    取得対象は受信できる地上波・BS・CS チャンネルの、1週間先までの番組（ケーブルテレビの自主放送も含む）。<br>
+    サーバーの起動直後など、まだトル数を取得できていない場合は空の辞書を返す。
+    """
+
+    return TorneClient.getToruCounts()
+
+
+@router.get(
+    '/toru-ranking',
+    summary = 'トル数ランキング API',
+    response_description = 'トル数が基準値の何倍かの大きい順に並んだ番組情報のリスト。',
+    response_model = schemas.Programs,
+)
+async def ToruRankingAPI(
+    channel_type: Annotated[Literal['GR', 'BS', 'CS'] | None, Query(description='チャンネル種別。省略時は全種別。')] = None,
+    genre: Annotated[str | None, Query(description='ジャンルの大分類 (例: アニメ・特撮) 。省略時は全ジャンル。')] = None,
+    page: Annotated[int, Query(description='ページ番号。', ge=1)] = 1,
+):
+    """
+    放送が終了していない番組のうち、トル数が基準値 (トル数取得 API の highlight_base) の何倍かの大きい順に上位 100 件までを、一度に 20 件ずつ取得する。<br>
+    同じ放送波の番組だけを比べる場合は、トル数の多い順と同じ並びになる。<br>
+    genre を指定した場合は、最初のジャンルの大分類が一致する番組だけを対象にする。<br>
+    total にはランキング全体の件数 (最大 100 件) が入る。番組ごとのトル数は、トル数取得 API のレスポンスから番組 ID で取得できる。
+    """
+
+    # 放送が終了していない番組の ID と放送開始時刻を取得する
+    ## 1週間分の番組は CS を含めると2万件ほどになり、Tortoise ORM で1行ずつモデルの値に変換すると古い CPU では 0.7 秒ほどかかるため、生の SQL で取得する
+    ## 日時の列は「2026-01-01 00:00:00+09:00」の形式の文字列で保存されているため、同じ形式の文字列と比較する
+    ## 放送開始時刻も文字列のまま取得する (形式が揃っているため、文字列の順序が時刻の順序と一致する)
+    conditions = ['p.end_time > ?']
+    params: list[Any] = [datetime.now(JST).isoformat(sep=' ', timespec='seconds')]
+    if channel_type is not None:
+        conditions.append('c.type = ?')
+        params.append(channel_type)
+
+    # ジャンルが指定されている場合は、最初のジャンル (その番組の主なジャンル) の大分類が一致する番組だけを対象にする
+    ## 2つ目以降のジャンルには「福祉 / 文字(字幕)」のような補助的な分類が入るため、絞り込みには使わない
+    if genre is not None:
+        conditions.append("json_extract(p.genres, '$[0].major') = ?")
+        params.append(genre)
+
+    programs_query = f"""
+        SELECT p.id, p.start_time
+        FROM programs p
+        JOIN channels c ON c.id = p.channel_id
+        WHERE {' AND '.join(conditions)}
+    """
+    connection = connections.get('default')
+    start_times: dict[str, str] = {}
+    for row in await connection.execute_query_dict(programs_query, params):
+        start_times[row['id']] = row['start_time']
+
+    # トル数を取得できている番組を、トル数が基準値の何倍かの大きい順に並べ、上位 100 件に絞る
+    ## 地上波のトル数はその地域の利用者だけの数で、BS・CS のトル数は全国の合計とみられるため、トル数そのものは放送波をまたいで比較できない
+    ## トル数の順に並べると、関東・近畿・東海を除く地域ではランキングが BS の番組だけになってしまう
+    ## そこで、放送波ごとの分布から算出した基準値に対する倍率で並べ、どの地域でも地上波と BS の番組が混ざるようにしている
+    ## CS の番組の基準値には BS の基準値が入っているため、CS の番組はトル数の値どおりに BS の番組と比較される
+    ## 倍率が同じ場合はトル数の多い順に、トル数も同じ場合は放送開始時刻の早い順に並べる
+    toru_counts = TorneClient.getToruCounts()
+    ranking_keys: dict[str, tuple[float, int, str]] = {}
+    for program_id, start_time in start_times.items():
+        toru_count = toru_counts.get(program_id)
+        if toru_count is None:
+            continue
+        # 基準値を算出できない放送波の番組は、基準値のある番組の後ろに並べる
+        ratio = toru_count.count / toru_count.highlight_base if toru_count.highlight_base is not None else 0.0
+        ranking_keys[program_id] = (-ratio, -toru_count.count, start_time)
+    ranked_program_ids = sorted(ranking_keys, key=lambda program_id: ranking_keys[program_id])[:100]
+
+    # 指定されたページの 20 件の番組情報を取得し、順位の順に並べて返す
+    page_program_ids = ranked_program_ids[(page - 1) * 20:page * 20]
+    programs: dict[str, schemas.Program] = {}
+    for program in await Program.filter(id__in=page_program_ids):
+        programs[program.id] = schemas.Program.model_validate(program, from_attributes=True)
+
+    return schemas.Programs(
+        total = len(ranked_program_ids),
+        programs = [programs[program_id] for program_id in page_program_ids],
     )
